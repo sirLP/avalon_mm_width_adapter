@@ -1,0 +1,146 @@
+# ===========================================================================
+# test_config.toml – single source of truth for the avalon_mm_width_adapter
+# test runner.
+#
+# Consumed by:
+#   • run.py   – builds the VUnit TEST_PLAN (generics + test names)
+#   • app.py   – drives the mode selector and test-case panel in the Flask UI
+#
+# To add a new configuration:
+#   1. Add a [configs.<key>] section with generics + tests list.
+#   2. Add a matching [modes.<key>] section with label / description / filter.
+#   3. Add any new test names to [test_descriptions].
+# ===========================================================================
+
+
+# ---------------------------------------------------------------------------
+# Operational modes
+# Shown as buttons in the mode selector.
+# "filter" is the VUnit glob passed on the command line.
+# Omit "filter" (or leave it empty) to run everything (used by "all").
+# "custom" is handled specially by the Flask UI – no filter needed.
+# ---------------------------------------------------------------------------
+
+[modes.all]
+label       = "All Tests"
+description = "Run all test cases across every built-in configuration"
+
+[modes.upsize_32_to_64]
+label       = "Upsize  32 → 64"
+description = "9 tests: slave 32-bit adapts to master 64-bit"
+filter      = "*upsize_32_to_64*"
+
+[modes.upsize_32_to_128]
+label       = "Upsize  32 → 128"
+description = "9 tests: slave 32-bit adapts to master 128-bit (ratio 4)"
+filter      = "*upsize_32_to_128*"
+
+[modes.downsize_64_to_32]
+label       = "Downsize  64 → 32"
+description = "4 tests: slave 64-bit adapts to master 32-bit"
+filter      = "*downsize_64_to_32*"
+
+[modes.passthrough_32_to_32]
+label       = "Pass-through  32 → 32"
+description = "3 tests: equal widths, wire-through"
+filter      = "*passthrough_32_to_32*"
+
+[modes.custom]
+label       = "Custom Widths"
+description = "Enter any S/M data width and run the matching test suite"
+
+
+# ---------------------------------------------------------------------------
+# Built-in test configurations
+# Each key must match a modes key (used for mode↔config cross-referencing).
+# "label" appears in the Test Cases panel group header.
+# Generics are passed verbatim to the VUnit add_config() call.
+# ---------------------------------------------------------------------------
+
+[configs.upsize_32_to_64]
+label        = "Upsize 32 → 64"
+ADDR_WIDTH   = 32
+S_DATA_WIDTH = 32
+M_DATA_WIDTH = 64
+SYMBOL_WIDTH = 8
+tests = [
+  "test_upsize_write_slot0",
+  "test_upsize_write_slot1",
+  "test_upsize_read_slot0",
+  "test_upsize_read_slot1",
+  "test_upsize_byteenable",
+  "test_upsize_waitrequest",
+  "test_upsize_pipelined_reads",
+  "test_upsize_roundtrip_slot0",
+  "test_upsize_roundtrip_slot1",
+]
+
+[configs.upsize_32_to_128]
+label        = "Upsize 32 → 128"
+ADDR_WIDTH   = 32
+S_DATA_WIDTH = 32
+M_DATA_WIDTH = 128
+SYMBOL_WIDTH = 8
+tests = [
+  "test_upsize_write_slot0",
+  "test_upsize_write_slot1",
+  "test_upsize_read_slot0",
+  "test_upsize_read_slot1",
+  "test_upsize_byteenable",
+  "test_upsize_waitrequest",
+  "test_upsize_pipelined_reads",
+  "test_upsize_roundtrip_slot0",
+  "test_upsize_roundtrip_slot1",
+]
+
+[configs.downsize_64_to_32]
+label        = "Downsize 64 → 32"
+ADDR_WIDTH   = 32
+S_DATA_WIDTH = 64
+M_DATA_WIDTH = 32
+SYMBOL_WIDTH = 8
+tests = [
+  "test_downsize_write",
+  "test_downsize_read",
+  "test_downsize_partial_be",
+  "test_downsize_waitrequest",
+]
+
+[configs.passthrough_32_to_32]
+label        = "Pass-through 32 → 32"
+ADDR_WIDTH   = 32
+S_DATA_WIDTH = 32
+M_DATA_WIDTH = 32
+SYMBOL_WIDTH = 8
+tests = [
+  "test_passthrough_write",
+  "test_passthrough_read",
+  "test_passthrough_waitrequest",
+]
+
+
+# ---------------------------------------------------------------------------
+# Test case descriptions
+# Shown in the Test Cases panel and on the Help page.
+# Key = test function name as it appears in the VHDL testbench.
+# ---------------------------------------------------------------------------
+
+[test_descriptions]
+test_upsize_write_slot0 = "Write a 32-bit word into slot 0 of the wider master bus. Verifies that the write data and byte-enables land in the correct lower byte lanes."
+test_upsize_write_slot1 = "Write a 32-bit word into slot 1 of the wider master bus. Checks that data is placed in the correct upper byte lanes when the slave address targets the second slot."
+test_upsize_read_slot0  = "Issue a 32-bit read that maps to slot 0 of a wider master read. Verifies the adapter issues one master read and extracts the correct lower lane back to the slave."
+test_upsize_read_slot1  = "Issue a 32-bit read that maps to slot 1 of a wider master read. Checks that the second 32-bit lane is correctly extracted from the 64/128-bit master response."
+test_upsize_byteenable  = "Checks that partial byte-enable masks are correctly widened and positioned within the master bus byte-enable vector during an upsizing write."
+test_upsize_waitrequest = "Sends a write while the master asserts waitrequest for one cycle. Verifies the adapter stalls correctly and completes the transfer after backpressure is released."
+test_upsize_pipelined_reads = "Issues two back-to-back 32-bit reads targeting different slots. Validates that the slot-tracking FIFO correctly queues and dispatches both outstanding read responses in order."
+test_upsize_roundtrip_slot0 = "Writes 0xDEADBEEF into slot 0 via the slave port, then reads it back via the same port. Verifies the write and read paths together end-to-end."
+test_upsize_roundtrip_slot1 = "Writes 0xCAFEBABE into slot 1 via the slave port, then reads it back. Also checks that slot 0 is not disturbed by the write."
+
+test_downsize_write        = "A wide slave write is split into multiple narrow master writes. Verifies address incrementing, correct data slicing, and that all beats complete before the adapter acknowledges the slave."
+test_downsize_read         = "Multiple narrow master reads are issued and their responses are reassembled into one wide slave read response. Checks data concatenation and response timing."
+test_downsize_partial_be   = "A downsizing write with a sparse byte-enable mask. Verifies only the enabled sub-words generate master write beats and disabled sub-words are suppressed."
+test_downsize_waitrequest  = "During a multi-beat downsize sequence the master asserts waitrequest mid-burst. Verifies the adapter pauses and then resumes the remaining beats correctly."
+
+test_passthrough_write        = "With equal slave and master widths the adapter must be transparent. Asserts that address, data, and byte-enables are forwarded to the master unchanged."
+test_passthrough_read         = "A read request in pass-through mode. Checks that the request is forwarded unmodified and the master's readdata and readdatavalid are wired directly back to the slave."
+test_passthrough_waitrequest  = "Verifies that in pass-through mode the master waitrequest signal is wired directly to the slave waitrequest with no additional latency or buffering."

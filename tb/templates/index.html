@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>avalon_mm_width_adapter – Test Runner</title>
+<style>
+  /* ── Reset & base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0d1117;
+    --surface:   #161b22;
+    --border:    #30363d;
+    --text:      #c9d1d9;
+    --muted:     #8b949e;
+    --accent:    #58a6ff;
+    --pass:      #3fb950;
+    --fail:      #f85149;
+    --warn:      #d29922;
+    --start:     #79c0ff;
+    --summary:   #e3b341;
+    --radius:    8px;
+    --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px 48px;
+  }
+
+  /* ── Header ── */
+  header {
+    width: 100%;
+    max-width: 900px;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  header h1 {
+    font-size: 1.45rem;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: .02em;
+  }
+  header p {
+    margin-top: 4px;
+    font-size: .88rem;
+    color: var(--muted);
+  }
+
+  /* ── Card ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    width: 100%;
+    max-width: 900px;
+    margin-bottom: 20px;
+  }
+  .card-title {
+    font-size: .78rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  /* ── Mode selector ── */
+  .mode-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(195px, 1fr));
+    gap: 10px;
+  }
+  .mode-btn {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color .15s, background .15s;
+  }
+  .mode-btn:hover { border-color: var(--accent); }
+  .mode-btn.selected {
+    border-color: var(--accent);
+    background: #1c2940;
+  }
+  .mode-btn .mode-label {
+    font-size: .92rem;
+    font-weight: 600;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .mode-btn.selected .mode-label { color: var(--accent); }
+  .mode-btn .mode-desc {
+    font-size: .78rem;
+    color: var(--muted);
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+  /* radio dot */
+  .mode-btn .dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    border: 2px solid var(--muted);
+    flex-shrink: 0;
+    transition: border-color .15s, background .15s;
+  }
+  .mode-btn.selected .dot {
+    border-color: var(--accent);
+    background: var(--accent);
+  }
+
+  /* ── Controls ── */
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    padding: 8px 20px;
+    border-radius: var(--radius);
+    font-size: .88rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: opacity .15s;
+  }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-run {
+    background: var(--accent);
+    color: #0d1117;
+  }
+  .btn-run:hover:not(:disabled) { filter: brightness(1.12); }
+  .btn-clear {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .btn-clear:hover:not(:disabled) { border-color: var(--text); color: var(--text); }
+
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: .85rem;
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+  }
+  .checkbox-label input { accent-color: var(--accent); cursor: pointer; }
+
+  /* ── Status bar ── */
+  #status-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: .83rem;
+    color: var(--muted);
+    min-height: 22px;
+  }
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    display: none;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Custom config inputs ── */
+  .custom-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 14px;
+    margin-bottom: 10px;
+  }
+  .field-label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: .82rem;
+    color: var(--muted);
+  }
+  .num-input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: .95rem;
+    font-family: var(--font-mono);
+    padding: 7px 10px;
+    width: 100%;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .num-input:focus { border-color: var(--accent); }
+  .custom-hint {
+    font-size: .78rem;
+    color: var(--muted);
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+  .custom-hint.valid   { color: var(--pass); }
+  .custom-hint.invalid { color: var(--fail); }
+
+  /* ── Terminal ── */
+  #terminal {
+    background: #010409;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    font-family: var(--font-mono);
+    font-size: .80rem;
+    line-height: 1.6;
+    height: 440px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  #terminal:empty::before {
+    content: "Output will appear here once a test run starts…";
+    color: var(--muted);
+  }
+
+  /* Line colours */
+  .ln-pass    { color: var(--pass); }
+  .ln-fail    { color: var(--fail); }
+  .ln-warn    { color: var(--warn); }
+  .ln-start   { color: var(--start); }
+  .ln-summary { color: var(--summary); font-weight: 700; }
+  .ln-ui      { color: #6e7681; font-style: italic; }
+  .ln-error   { color: var(--fail); }
+  .ln-default { color: var(--text); }
+
+  /* ── Result banner ── */
+  #result-banner {
+    display: none;
+    width: 100%;
+    max-width: 900px;
+    border-radius: var(--radius);
+    padding: 14px 20px;
+    font-size: .93rem;
+    font-weight: 600;
+    align-items: center;
+    gap: 12px;
+    border: 1px solid transparent;
+  }
+  #result-banner.pass {
+    display: flex;
+    background: #0d1f17;
+    border-color: var(--pass);
+    color: var(--pass);
+  }
+  #result-banner.fail {
+    display: flex;
+    background: #1f0d0d;
+    border-color: var(--fail);
+    color: var(--fail);
+  }
+  #result-banner .icon { font-size: 1.3rem; }
+  #result-banner .detail { font-size: .83rem; font-weight: 400; color: var(--muted); }
+  /* ── Test Cases panel ── */
+  .tc-header { display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none; }
+  .tc-chevron { transition:transform .18s; font-size:.7rem; color:var(--muted); }
+  .tc-header.open .tc-chevron { transform:rotate(90deg); }
+  .tc-group { margin-bottom:12px; }
+  .tc-group-hdr {
+    display:flex; align-items:center; gap:8px;
+    font-size:.75rem; font-weight:700; color:var(--muted);
+    text-transform:uppercase; letter-spacing:.07em;
+    padding:6px 0 4px; border-bottom:1px solid var(--border); margin-bottom:2px;
+  }
+  .tc-group-hdr input[type=checkbox] { accent-color:var(--accent); cursor:pointer; }
+  .tc-row {
+    display:flex; align-items:flex-start; gap:8px;
+    padding:5px 6px; border-radius:5px; font-size:.82rem; color:var(--text);
+  }
+  .tc-row:hover { background:#0d1117; }
+  .tc-row input[type=checkbox] { margin-top:2px; flex-shrink:0; accent-color:var(--accent); cursor:pointer; }
+  .tc-name {
+    font-family:var(--font-mono); font-size:.79rem;
+    color:var(--accent); cursor:pointer; flex:1;
+  }
+  .tc-name:hover { text-decoration:underline; }
+  .tc-desc-box {
+    display:none; padding:5px 28px 8px;
+    font-size:.78rem; color:var(--muted); line-height:1.55;
+    border-left:2px solid var(--border); margin:0 0 4px 26px;
+  }
+  .tc-desc-box.open { display:block; }
+  #tc-counter { font-size:.78rem; color:var(--muted); margin-left:auto; white-space:nowrap; }
+
+  /* ── Waveform viewer ── */
+  #wave-card select { background:var(--bg); color:var(--text); }
+  #wave-body { display:flex; height:460px; font-family:var(--font-mono); }
+  #wave-names { width:210px; flex-shrink:0; border-right:1px solid var(--border);
+                overflow:hidden; background:#010409; }
+  #wave-canvas-wrap { flex:1; overflow:hidden; position:relative; background:#010409; }
+
+  /* ── AI Chat ── */
+  #chat-body { display: block; margin-top: 14px; }
+  #chat-messages {
+    height: 320px;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+    margin-bottom: 10px;
+    font-size: .85rem;
+    scroll-behavior: smooth;
+  }
+  .chat-msg {
+    max-width: 88%;
+    padding: 8px 12px;
+    border-radius: var(--radius);
+    line-height: 1.55;
+    word-break: break-word;
+  }
+  .chat-msg-user {
+    background: #1c2940;
+    border: 1px solid #30507a;
+    color: var(--text);
+    align-self: flex-end;
+  }
+  .chat-msg-assistant {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    align-self: flex-start;
+  }
+  .chat-thinking { color: var(--muted); font-style: italic; }
+  .chat-code {
+    background: #010409;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 8px 10px;
+    font-family: var(--font-mono);
+    font-size: .74rem;
+    overflow-x: auto;
+    margin: 6px 0;
+    white-space: pre;
+    color: var(--text);
+  }
+  .chat-code-toml { border-color: var(--accent); }
+  .chat-inline-code {
+    background: #010409;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 1px 4px;
+    font-family: var(--font-mono);
+    font-size: .78rem;
+  }
+  .chat-input-row { display: flex; gap: 8px; align-items: flex-end; }
+  #chat-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: .85rem;
+    padding: 8px 12px;
+    resize: vertical;
+    min-height: 40px;
+    max-height: 140px;
+    font-family: inherit;
+    line-height: 1.4;
+  }
+  #chat-input:focus { outline: none; border-color: var(--accent); }
+  #chat-input::placeholder { color: var(--muted); }
+  .chat-proposal {
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .chat-proposal-hdr {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 12px;
+    background: #1c2940;
+    font-size: .82rem;
+    font-weight: 600;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .chat-model-badge {
+    font-size: .72rem;
+    color: var(--muted);
+    margin-bottom: 8px;
+    font-family: var(--font-mono);
+  }
+  .chat-placeholder {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    font-size: .82rem;
+    text-align: center;
+    padding: 24px;
+    user-select: none;
+  }
+
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>⚡ avalon_mm_width_adapter</h1>
+    <p>Avalon-MM Width Adapter · VUnit / GHDL Test Runner</p>
+  </div>
+  <a href="/config" class="btn-clear" style="display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:var(--radius);font-size:.85rem;font-weight:600;text-decoration:none;transition:border-color .15s,color .15s;">&#9998; Config</a>
+  <a href="/help" class="btn-clear" style="display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:var(--radius);font-size:.85rem;font-weight:600;text-decoration:none;transition:border-color .15s,color .15s;">? Help</a>
+</header>
+
+<!-- Mode selection -->
+<div class="card">
+  <div class="card-title">Operational Mode</div>
+  <div class="mode-grid" id="mode-grid">
+    {% for key, info in modes.items() %}
+    <button class="mode-btn {% if loop.first %}selected{% endif %}"
+            onclick="selectMode('{{ key }}')"
+            data-key="{{ key }}">
+      <div class="mode-label"><span class="dot"></span>{{ info.label }}</div>
+      <div class="mode-desc">{{ info.description }}</div>
+    </button>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Test Cases -->
+<div class="card" id="tc-card">
+  <div class="tc-header" id="tc-toggle" onclick="toggleTC()">
+    <div class="card-title" style="margin:0">Test Cases</div>
+    <span class="tc-chevron" id="tc-chevron">&#9654;</span>
+    <span id="tc-counter"></span>
+  </div>
+  <div id="tc-body" style="display:none;margin-top:14px;"></div>
+</div>
+
+<!-- Custom config panel (shown only when Custom Widths is selected) -->
+<div class="card" id="custom-card" style="display:none;">
+  <div class="card-title">Custom Generics</div>
+  <div class="custom-grid">
+    <label class="field-label">S_DATA_WIDTH &nbsp;<small>(slave bits)</small>
+      <input class="num-input" type="number" id="inp-s-width"
+             value="32" min="8" step="8" oninput="validateCustom()">
+    </label>
+    <label class="field-label">M_DATA_WIDTH &nbsp;<small>(master bits)</small>
+      <input class="num-input" type="number" id="inp-m-width"
+             value="128" min="8" step="8" oninput="validateCustom()">
+    </label>
+    <label class="field-label">ADDR_WIDTH &nbsp;<small>(address bits)</small>
+      <input class="num-input" type="number" id="inp-addr-width"
+             value="32" min="8" step="8">
+    </label>
+    <label class="field-label">SYMBOL_WIDTH &nbsp;<small>(bits per symbol)</small>
+      <input class="num-input" type="number" id="inp-sym-width"
+             value="8" min="1" step="1">
+    </label>
+  </div>
+  <p class="custom-hint" id="custom-hint"></p>
+</div>
+
+<!-- Controls -->
+<div class="card">
+  <div class="card-title">Run</div>
+  <div class="controls">
+    <button class="btn btn-run" id="btn-run" onclick="startRun()">▶ Run Tests</button>
+    <button class="btn btn-clear" id="btn-clear" onclick="clearOutput()">Clear</button>
+    <label class="checkbox-label">
+      <input type="checkbox" id="chk-clean"> Recompile (clean build)
+    </label>    <label class="checkbox-label">
+      <input type="checkbox" id="chk-waves"> Show Waveforms
+    </label>    <div id="status-bar">
+      <div class="spinner" id="spinner"></div>
+      <span id="status-text">Idle</span>
+    </div>
+  </div>
+</div>
+
+<!-- Terminal output -->
+<div class="card" style="padding:0; overflow:hidden;">
+  <div style="padding:12px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+    <span class="card-title" style="margin:0">Output</span>
+    <span id="progress-text" style="font-size:.78rem; color:var(--muted)"></span>
+  </div>
+  <div id="terminal"></div>
+</div>
+
+<!-- Result banner -->
+<div id="result-banner">
+  <span class="icon" id="result-icon"></span>
+  <div>
+    <div id="result-headline"></div>
+    <div class="detail" id="result-detail"></div>
+  </div>
+</div>
+
+<!-- Waveform viewer (populated after a run with "Show Waveforms" enabled) -->
+<div class="card" id="wave-card" style="display:none;padding:0;overflow:hidden;">
+  <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+    <span class="card-title" style="margin:0">Waveforms</span>
+    <select id="wave-select" onchange="loadWave()"
+            style="background:var(--bg);border:1px solid var(--border);color:var(--text);
+                   border-radius:6px;padding:4px 8px;font-size:.82rem;flex:1;max-width:480px;cursor:pointer;">
+      <option value="">&#8212; select a test &#8212;</option>
+    </select>
+    <button class="btn btn-clear" style="padding:5px 12px;font-size:.8rem;" onclick="wv&&wv.zoom(1.35)">&#43; Zoom</button>
+    <button class="btn btn-clear" style="padding:5px 12px;font-size:.8rem;" onclick="wv&&wv.zoom(1/1.35)">&#8722; Zoom</button>
+    <button class="btn btn-clear" style="padding:5px 12px;font-size:.8rem;" onclick="wv&&wv.fit()" title="Zoom out to show the full simulation">Fit All</button>
+    <span id="wave-status" style="font-size:.78rem;margin-left:4px;"></span>
+  </div>
+  <div id="wave-body">
+    <div id="wave-names"></div>
+    <div id="wave-canvas-wrap"></div>
+  </div>
+</div>
+
+<!-- AI Chat -->
+<div class="card" id="chat-card">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+    <div class="card-title" style="margin:0">&#129504; AI Assistant</div>
+    <span id="chat-model-badge" class="chat-model-badge" style="margin:0;"></span>
+  </div>
+  <div id="chat-body">
+    <!-- Message history -->
+    <div id="chat-messages">
+      <div class="chat-placeholder" id="chat-placeholder">
+        Ask about test results &mdash; or request a configuration change.
+      </div>
+    </div>
+    <!-- Input row -->
+    <div class="chat-input-row">
+      <textarea id="chat-input"
+                placeholder="e.g. &quot;Why did test_downsize_waitrequest fail?&quot; or &quot;Add a 16&#x2192;128 upsize config&quot;"
+                onkeydown="chatKeyDown(event)"></textarea>
+      <button class="btn btn-run" id="btn-chat-send" style="height:40px;padding:0 18px;"
+              onclick="sendChat()">Send</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let selectedMode = "{{ (modes.keys() | list)[0] }}";
+  let evtSource    = null;
+  let running      = false;
+  let wavesEnabled = false;
+  let wv           = null;   // active WaveformViewer instance
+  let terminalOutput = "";  // accumulated text from the last/current test run
+
+  // ── WaveformViewer ──────────────────────────────────────────────────────
+  const SIG_ORDER = [
+    "clk","reset",
+    "s_address","s_read","s_write","s_writedata","s_byteenable",
+    "s_readdata","s_readdatavalid","s_waitrequest",
+    "m_address","m_read","m_write","m_writedata","m_byteenable",
+    "m_readdata","m_readdatavalid","m_waitrequest",
+  ];
+
+  class WaveformViewer {
+    constructor(nameEl, wrapEl, data) {
+      this.nameEl    = nameEl;
+      this.wrapEl    = wrapEl;
+      this.signals   = this._order(data.signals);
+      this.endtime   = (data.endtime || 1) * 1.15;  // 15 % right padding so the last label is never clipped
+      this.timescale = data.timescale || "1 ns";
+      this.ROW_H = 36; this.HDR_H = 24; this.PAD = 5;
+      this.scale = 1;  this.offX  = 0;
+      this.canvas = document.createElement("canvas");
+      this.canvas.style.cssText = "display:block;cursor:grab;";
+      wrapEl.innerHTML = ""; wrapEl.appendChild(this.canvas);
+      this._buildNames(); this._fitAll(); this._render(); this._events();
+    }
+
+    _order(sigs) {
+      const m = Object.fromEntries(sigs.map(s=>[s.name,s]));
+      return [...SIG_ORDER.filter(n=>m[n]).map(n=>m[n]),
+              ...sigs.filter(s=>!SIG_ORDER.includes(s.name))];
+    }
+
+    _buildNames() {
+      const R=this.ROW_H, H=this.HDR_H;
+      let html=`<div style="height:${H}px;border-bottom:1px solid #30363d;
+                        padding:0 8px;font-size:9px;color:#8b949e;line-height:${H}px;">
+                     Time (${this.timescale})</div>`;
+      this.signals.forEach((s,i)=>{
+        const bits=s.width>1?`[${s.width-1}:0]`:"";
+        const clr=s.width>1?"#79c0ff":"#c9d1d9";
+        const bg=i%2?"#0a0f14":"#010409";
+        html+=`<div title="${s.name} ${bits}"
+                     style="height:${R}px;background:${bg};display:flex;align-items:center;
+                            gap:4px;padding:0 8px;font-size:.72rem;color:${clr};
+                            border-bottom:1px solid #1c2128;overflow:hidden;white-space:nowrap;">
+                 <span>${s.name.split(".").pop()}</span>
+                 <span style="color:#444c56;font-size:.63rem;">${bits}</span></div>`;
+      });
+      this.nameEl.innerHTML = html;
+    }
+
+    _fitAll() {
+      const w=this.wrapEl.offsetWidth||600;
+      this.scale=(w-16)/Math.max(1,this.endtime); this.offX=0;
+    }
+    _tH() { return this.HDR_H+this.signals.length*this.ROW_H; }
+    _tx(t) { return t*this.scale-this.offX; }
+
+    _render() {
+      const W=this.wrapEl.offsetWidth||600, H=this._tH();
+      if (W <= 0 || H <= 0) { requestAnimationFrame(()=>this._render()); return; }
+      const dpr=window.devicePixelRatio||1;
+      this.canvas.width=W*dpr; this.canvas.height=H*dpr;
+      this.canvas.style.width=W+"px"; this.canvas.style.height=H+"px";
+      const c=this.canvas.getContext("2d"); c.scale(dpr,dpr);
+      c.fillStyle="#010409"; c.fillRect(0,0,W,H);
+      this.signals.forEach((_,i)=>{
+        if(i%2){c.fillStyle="#0a0f14";c.fillRect(0,this.HDR_H+i*this.ROW_H,W,this.ROW_H);}
+      });
+      c.strokeStyle="#1c2128"; c.lineWidth=1;
+      for(let i=0;i<=this.signals.length;i++){
+        const y=this.HDR_H+i*this.ROW_H;
+        c.beginPath();c.moveTo(0,y);c.lineTo(W,y);c.stroke();
+      }
+      this._axis(c,W);
+      this.signals.forEach((s,i)=>this._sig(c,s,i,W));
+    }
+
+    _axis(c,W) {
+      const H=this.HDR_H;
+      c.fillStyle="#0d1117"; c.fillRect(0,0,W,H);
+      c.strokeStyle="#30363d"; c.lineWidth=1;
+      c.beginPath();c.moveTo(0,H);c.lineTo(W,H);c.stroke();
+      let step=1;
+      while(step*this.scale<60) step*=(step<10?10:step<50?5:2);
+      const t0=Math.floor(this.offX/this.scale/step)*step;
+      const t1=Math.ceil((this.offX+W)/this.scale);
+      c.font="10px monospace";
+      for(let t=t0;t<=t1;t+=step){
+        const x=this._tx(t); if(x<0||x>W) continue;
+        c.strokeStyle="#1c2128"; c.lineWidth=1;
+        c.beginPath();c.moveTo(x,H);c.lineTo(x,this._tH());c.stroke();
+        c.strokeStyle="#30363d";
+        c.beginPath();c.moveTo(x,H-5);c.lineTo(x,H);c.stroke();
+        c.fillStyle="#8b949e"; c.fillText(String(t),x+2,H-5);
+      }
+      c.fillStyle="#58a6ff"; c.font="9px monospace";
+      c.fillText(this.timescale,4,13);
+    }
+
+    _sig(c,sig,idx,W) {
+      const R=this.ROW_H,P=this.PAD,H=this.HDR_H;
+      const y0=H+idx*R,yH=y0+P,yL=y0+R-P,yM=y0+R/2;
+      const d=sig.data; if(!d||!d.length) return;
+      if(sig.name==="clk")        this._clk(c,d,yH,yL);
+      else if(sig.width===1)      this._1b(c,d,yH,yL,yM,W);
+      else                        this._bus(c,sig,d,yH,yL,yM,W);
+    }
+
+    _clk(c,d,yH,yL) {
+      c.strokeStyle="#79c0ff"; c.lineWidth=1.5; c.beginPath();
+      let py=yL,first=true;
+      for(const[t,v] of d){
+        const x=this._tx(t),y=(v==="1")?yH:yL;
+        if(first){c.moveTo(Math.max(0,this._tx(0)),py);first=false;}
+        c.lineTo(x,py);c.lineTo(x,y);py=y;
+      }
+      c.lineTo(1e7,py);c.stroke();
+    }
+
+    _1b(c,d,yH,yL,yM,W) {
+      const xz=v=>v==="x"||v==="z",hi=v=>v==="1";
+      c.fillStyle="#0f2a0f";
+      for(let i=0;i<d.length;i++){
+        const[t,v]=d[i]; if(!hi(v)) continue;
+        const x0=Math.max(0,this._tx(t));
+        const x1=Math.min(W,this._tx(d[i+1]?d[i+1][0]:this.endtime));
+        if(x1>x0) c.fillRect(x0,yH,x1-x0,yL-yH);
+      }
+      c.strokeStyle="#3fb950"; c.lineWidth=1.5; c.beginPath();
+      let py=yL,first=true;
+      for(const[t,v] of d){
+        const x=this._tx(t),y=xz(v)?yM:(hi(v)?yH:yL);
+        if(first){c.moveTo(Math.max(0,this._tx(0)),py);first=false;}
+        c.lineTo(x,py);c.lineTo(x,y);py=y;
+      }
+      c.lineTo(1e7,py);c.stroke();
+      for(let i=0;i<d.length;i++){
+        const[t,v]=d[i]; if(!xz(v)) continue;
+        const x0=Math.max(0,this._tx(t));
+        const x1=Math.min(W,this._tx(d[i+1]?d[i+1][0]:this.endtime));
+        if(x1>x0){
+          c.fillStyle="#332200";c.fillRect(x0,yH,x1-x0,yL-yH);
+          c.strokeStyle="#d29922";c.lineWidth=1;c.strokeRect(x0,yH,x1-x0,yL-yH);
+        }
+      }
+    }
+
+    _bus(c,sig,d,yH,yL,yM,W) {
+      const TR=5;
+      for(let i=0;i<d.length;i++){
+        const[t,v]=d[i];
+        const t1=d[i+1]?d[i+1][0]:this.endtime;
+        const x0=this._tx(t),x1=this._tx(t1);
+        if(x1<0||x0>W) continue;
+        const cx0=Math.max(0,x0),cx1=Math.min(W,x1);
+        const xv=/^[xz]+$/.test(v);
+        const lx0=Math.min(cx1,cx0+(cx0>x0?0:TR));
+        const lx1=Math.max(cx0,cx1-(cx1<x1?0:TR));
+        if(lx1<=lx0) continue;
+        c.fillStyle=xv?"#332200":"#06182e";
+        c.beginPath();
+        c.moveTo(Math.max(cx0,x0),yM);c.lineTo(lx0,yH);c.lineTo(lx1,yH);
+        c.lineTo(Math.min(cx1,x1),yM);c.lineTo(lx1,yL);c.lineTo(lx0,yL);
+        c.closePath();c.fill();
+        c.strokeStyle=xv?"#d29922":"#58a6ff";c.lineWidth=1;c.stroke();
+        const label=xv?"X":this._b2h(v,sig.width);
+        if(lx1-lx0>14){
+          c.save();
+          c.beginPath();c.rect(lx0,yH,lx1-lx0,yL-yH);c.clip();
+          c.fillStyle=xv?"#d29922":"#79c0ff";
+          c.font=`${Math.min(11,(yL-yH)*.55)}px monospace`;
+          c.textBaseline="middle";
+          c.fillText(label,lx0+5,yM);c.restore();
+        }
+      }
+    }
+
+    _b2h(bin,w) {
+      const p=bin.padStart(w,bin[0]||"0");
+      if(/^[xz]+$/.test(p)) return "X";
+      let h="";
+      for(let i=0;i<p.length;i+=4){
+        const n=p.slice(i,i+4).padStart(4,"0");
+        h+=/[xz]/.test(n)?"X":parseInt(n,2).toString(16).toUpperCase();
+      }
+      return "0x"+h;
+    }
+
+    _events() {
+      let drag=false,dx=0,ox0=0;
+      this.canvas.addEventListener("mousedown",e=>{
+        drag=true;dx=e.clientX;ox0=this.offX;
+        this.canvas.style.cursor="grabbing";
+      });
+      document.addEventListener("mousemove",e=>{
+        if(!drag) return;
+        const max=Math.max(0,this.endtime*this.scale-this.wrapEl.offsetWidth);
+        this.offX=Math.min(max,Math.max(0,ox0-(e.clientX-dx)));
+        this._render();
+      });
+      document.addEventListener("mouseup",()=>{
+        if(drag){drag=false;this.canvas.style.cursor="grab";}
+      });
+      this.canvas.addEventListener("wheel",e=>{
+        e.preventDefault();
+        const f=e.deltaY<0?1.25:1/1.25;
+        const mx=e.offsetX+this.offX;
+        this.scale=Math.max(1e-4,Math.min(500,this.scale*f));
+        const max=Math.max(0,this.endtime*this.scale-this.wrapEl.offsetWidth);
+        this.offX=Math.min(max,Math.max(0,mx-e.offsetX));
+        this._render();
+      },{passive:false});
+      new ResizeObserver(()=>this._render()).observe(this.wrapEl);
+    }
+
+    fit()   { this._fitAll(); this._render(); }
+    zoom(f) { this.scale=Math.max(1e-4,Math.min(500,this.scale*f)); this._render(); }
+  }
+
+  // ── Test Cases data – injected from test_config.toml via Flask ──────────
+  const TC_GROUPS = {{ tc_groups | tojson }};
+  const TC_DESC   = {{ tc_descriptions | tojson }};
+
+  // key = "config.test", value = true (selected)
+  const tcSelected = new Set();
+
+  function _tcKey(config, test) { return config + "." + test; }
+
+  function initTC() {
+    TC_GROUPS.forEach(g => g.tests.forEach(t => tcSelected.add(_tcKey(g.config, t))));
+    buildTCBody(selectedMode);
+  }
+
+  function toggleTC() {
+    const body = document.getElementById("tc-body");
+    const hdr  = document.getElementById("tc-toggle");
+    const open = body.style.display === "";
+    body.style.display = open ? "none" : "";
+    hdr.classList.toggle("open", !open);
+  }
+
+  function buildTCBody(mode) {
+    const body = document.getElementById("tc-body");
+    const groups = TC_GROUPS.filter(g => g.modes.includes(mode));
+    if (!groups.length) {
+      body.innerHTML = '<p style="color:var(--muted);font-size:.8rem;">'
+        + 'Test case selection is not available for Custom mode.</p>';
+      _updateCounter();
+      return;
+    }
+    let html = "";
+    groups.forEach(g => {
+      const allKey   = `tc-all-${g.config}`;
+      const allChk   = g.tests.every(t => tcSelected.has(_tcKey(g.config, t)));
+      const someChk  = g.tests.some(t => tcSelected.has(_tcKey(g.config, t)));
+      html += `<div class="tc-group">`;
+      html += `<div class="tc-group-hdr">`
+            + `<input type="checkbox" id="${allKey}" ${allChk?"checked":""}
+                     onchange="tcGroupToggle('${g.config}',this.checked)">
+              <label for="${allKey}" style="cursor:pointer">${g.label}</label></div>`;
+      g.tests.forEach(t => {
+        const key  = _tcKey(g.config, t);
+        const chk  = tcSelected.has(key);
+        const did  = `tcd-${g.config}-${t}`;
+        html += `<div class="tc-row">`
+              + `<input type="checkbox" ${chk?"checked":""}
+                       onchange="tcToggle('${key}', '${g.config}', '${t}', this.checked)">`
+              + `<span class="tc-name" onclick="tcDescToggle('${did}')">${t}</span>`
+              + `</div>`
+              + `<div class="tc-desc-box" id="${did}">${TC_DESC[t] || ""}</div>`;
+      });
+      html += "</div>";
+    });
+    body.innerHTML = html;
+    _updateCounter();
+  }
+
+  function tcToggle(key, config, test, checked) {
+    checked ? tcSelected.add(key) : tcSelected.delete(key);
+    // Update group header checkbox state
+    const g = TC_GROUPS.find(g => g.config === config);
+    if (g) {
+      const allEl = document.getElementById(`tc-all-${config}`);
+      if (allEl) {
+        const all  = g.tests.every(t => tcSelected.has(_tcKey(config, t)));
+        const none = g.tests.every(t => !tcSelected.has(_tcKey(config, t)));
+        allEl.checked       = all;
+        allEl.indeterminate = !all && !none;
+      }
+    }
+    _updateCounter();
+  }
+
+  function tcGroupToggle(config, checked) {
+    const g = TC_GROUPS.find(g => g.config === config);
+    if (!g) return;
+    g.tests.forEach(t => {
+      checked ? tcSelected.add(_tcKey(config, t)) : tcSelected.delete(_tcKey(config, t));
+    });
+    buildTCBody(selectedMode);
+  }
+
+  function tcDescToggle(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle("open");
+  }
+
+  function _updateCounter() {
+    const groups = TC_GROUPS.filter(g => g.modes.includes(selectedMode));
+    const total  = groups.reduce((s,g) => s + g.tests.length, 0);
+    const sel    = groups.reduce((s,g) =>
+      s + g.tests.filter(t => tcSelected.has(_tcKey(g.config, t))).length, 0);
+    document.getElementById("tc-counter").textContent =
+      total ? `${sel}\u00a0/\u00a0${total} selected` : "";
+  }
+
+  function getTCFilters() {
+    // Returns null (use mode glob) or a comma-sep string of "config.test" pairs
+    const groups  = TC_GROUPS.filter(g => g.modes.includes(selectedMode));
+    const total   = groups.reduce((s,g) => s + g.tests.length, 0);
+    const selKeys = groups.flatMap(g =>
+      g.tests.filter(t => tcSelected.has(_tcKey(g.config, t)))
+             .map(t => _tcKey(g.config, t)));
+    if (selKeys.length === total) return null;  // all selected → use default
+    return selKeys.join(",");
+  }
+
+  // ── Mode selection ──────────────────────────────────────────────────────
+  function selectMode(key) {
+    if (running) return;
+    selectedMode = key;
+    document.querySelectorAll(".mode-btn").forEach(b => {
+      b.classList.toggle("selected", b.dataset.key === key);
+    });
+    document.getElementById("custom-card").style.display =
+      (key === "custom") ? "" : "none";
+    if (key === "custom") validateCustom();
+    buildTCBody(key);
+  }
+
+  // ── Custom config validation ───────────────────────────────────────────
+  function validateCustom() {
+    const s    = parseInt(document.getElementById("inp-s-width").value)  || 0;
+    const m    = parseInt(document.getElementById("inp-m-width").value)  || 0;
+    const hint = document.getElementById("custom-hint");
+    const sym  = parseInt(document.getElementById("inp-sym-width").value) || 8;
+    const errors = [];
+    if (s % sym !== 0 || s < sym)   errors.push(`S_DATA_WIDTH must be a multiple of SYMBOL_WIDTH (${sym})`);
+    if (m % sym !== 0 || m < sym)   errors.push(`M_DATA_WIDTH must be a multiple of SYMBOL_WIDTH (${sym})`);
+    const ratio = (m > s) ? m / s : (s > m ? s / m : 1);
+    const isPow2 = ratio > 0 && (ratio & (ratio - 1)) === 0;
+    if (!isPow2) errors.push(`Width ratio (${ratio}) must be a power of two`);
+    if (errors.length) {
+      hint.textContent = "\u26a0 " + errors.join(" \u00b7 ");
+      hint.className   = "custom-hint invalid";
+      return false;
+    }
+    const mode = m > s ? "upsize" : m < s ? "downsize" : "pass-through";
+    hint.textContent = `\u2713 ${mode}  \u00b7  ratio ${ratio}  \u00b7  S_BYTES=${s/sym}  M_BYTES=${m/sym}`;
+    hint.className   = "custom-hint valid";
+    return true;
+  }
+
+  // ── Clear output ──────────────────────────────────────────────────────
+  function clearOutput() {
+    document.getElementById("terminal").innerHTML   = "";
+    document.getElementById("result-banner").className    = "";
+    document.getElementById("result-banner").style.display = "none";
+    document.getElementById("wave-card").style.display    = "none";
+    document.getElementById("progress-text").textContent  = "";
+    wv = null;
+    terminalOutput = "";
+    setStatus("Idle", false);
+  }
+
+  // ── Status helpers ────────────────────────────────────────────────────
+  function setStatus(text, spin) {
+    document.getElementById("status-text").textContent = text;
+    document.getElementById("spinner").style.display = spin ? "block" : "none";
+  }
+  function setRunning(state) {
+    running = state;
+    document.getElementById("btn-run").disabled   = state;
+    document.getElementById("btn-clear").disabled = state;
+    document.querySelectorAll(".mode-btn").forEach(b => b.style.cursor = state ? "not-allowed" : "pointer");
+  }
+
+  // ── Classify a VUnit output line ────────────────────────────────────────
+  function classifyLine(line) {
+    const l = line.toLowerCase();
+    if (line.startsWith("[UI]"))                             return "ln-ui";
+    if (/^\s*(pass|fail)\s+\d+ of \d+/.test(l))             return "ln-summary";
+    if (/^={3,}/.test(line) || /^-{3,}/.test(line))         return "ln-summary";
+    if (l.startsWith("starting "))                           return "ln-start";
+    if (/\bpass\b/.test(l) && !/\bfail\b/.test(l))          return "ln-pass";
+    if (/\bfail\b/.test(l))                                  return "ln-fail";
+    if (/\berror\b/.test(l))                                 return "ln-error";
+    if (/\bwarning\b/.test(l))                               return "ln-warn";
+    return "ln-default";
+  }
+
+  // ── Append a line to the terminal ─────────────────────────────────────────
+  let passCount = 0, failCount = 0, totalCount = 0;
+  const KW_PATTERNS = [
+    { re: /^(pass) (?!\d+ of )/, cls: "ln-pass"  },
+    { re: /^(fail) (?!\d+ of )/, cls: "ln-fail"  },
+    { re: /^(Starting) /i,       cls: "ln-start" },
+  ];
+
+  function appendLine(line) {
+    const term = document.getElementById("terminal");
+    let appended = false;
+    for (const { re, cls } of KW_PATTERNS) {
+      const m = re.exec(line);
+      if (m) {
+        const kw=m[1], rest=line.slice(kw.length);
+        const row=document.createElement("span");
+        const ks=document.createElement("span"); ks.className=cls; ks.textContent=kw;
+        const rs=document.createElement("span"); rs.className="ln-default"; rs.textContent=rest+"\n";
+        row.appendChild(ks); row.appendChild(rs);
+        term.appendChild(row); appended=true; break;
+      }
+    }
+    if (!appended) {
+      const span=document.createElement("span");
+      span.className=classifyLine(line); span.textContent=line+"\n";
+      term.appendChild(span);
+    }
+    term.scrollTop = term.scrollHeight;
+    terminalOutput += line + "\n";  // feed the AI chat context buffer
+    const pm = line.match(/\(P=(\d+)\s+S=\d+\s+F=(\d+)\s+T=(\d+)\)/);
+    if (pm) {
+      passCount=parseInt(pm[1]); failCount=parseInt(pm[2]); totalCount=parseInt(pm[3]);
+      document.getElementById("progress-text").textContent =
+        `${passCount} passed \u00b7 ${failCount} failed \u00b7 ${totalCount} total`;
+    }
+  }
+
+  // ── Show final banner ────────────────────────────────────────────────────
+  function showResult(exitCode) {
+    const banner = document.getElementById("result-banner");
+    const allPass = exitCode === 0;
+    banner.className = allPass ? "pass" : "fail";
+    banner.style.display = "flex";
+    document.getElementById("result-icon").textContent = allPass ? "\u2713" : "\u2717";
+    document.getElementById("result-headline").textContent =
+      allPass ? "All tests passed" : `${failCount} test${failCount!==1?"s":""} failed`;
+    document.getElementById("result-detail").textContent =
+      totalCount ? `${passCount} / ${totalCount} passed`
+                 : (allPass ? "Exit code 0" : `Exit code ${exitCode}`);
+    banner.scrollIntoView({ behavior:"smooth", block:"nearest" });
+  }
+
+  // ── Waveform loading ────────────────────────────────────────────────────
+  function loadWaveList() {
+    fetch("/waves/list")
+      .then(r=>r.json())
+      .then(files=>{
+        const sel = document.getElementById("wave-select");
+        sel.innerHTML = '<option value="">&#8212; select a test &#8212;</option>';
+        files.forEach(f=>{
+          const o=document.createElement("option");
+          o.value=f; o.textContent=f.replace(/_/g," ");
+          sel.appendChild(o);
+        });
+        const card = document.getElementById("wave-card");
+        if (!files.length) return;
+        card.style.display = "";
+        if (files.length===1) { sel.value=files[0]; loadWave(); }
+        card.scrollIntoView({ behavior:"smooth", block:"nearest" });
+      }).catch(()=>{});
+  }
+
+  function loadWave() {
+    const name = document.getElementById("wave-select").value;
+    if (!name) return;
+    const statusEl = document.getElementById("wave-status");
+    if (statusEl) { statusEl.textContent = "Loading\u2026"; statusEl.style.color="#8b949e"; }
+    fetch(`/waves/data?name=${encodeURIComponent(name)}`)
+      .then(r=>{ if(!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+      .then(data=>{
+        if (!data.signals || data.signals.length === 0) {
+          if (statusEl) { statusEl.textContent = "No signals found in VCD."; statusEl.style.color="#f85149"; }
+          return;
+        }
+        if (statusEl) statusEl.textContent = "";
+        try {
+          wv = new WaveformViewer(
+            document.getElementById("wave-names"),
+            document.getElementById("wave-canvas-wrap"),
+            data
+          );
+        } catch(err) {
+          if (statusEl) { statusEl.textContent = "Render error: "+err.message; statusEl.style.color="#f85149"; }
+          console.error("WaveformViewer error:", err);
+        }
+      }).catch(e=>{
+        if (statusEl) { statusEl.textContent = "Load error: "+e.message; statusEl.style.color="#f85149"; }
+        console.error("Wave load:",e);
+      });
+  }
+
+  // ── Start a test run ────────────────────────────────────────────────────
+  function startRun() {
+    if (running) return;
+    if (selectedMode==="custom" && !validateCustom()) {
+      alert("Please fix the custom config errors before running."); return;
+    }
+    clearOutput();
+    passCount=failCount=totalCount=0;
+    wavesEnabled = document.getElementById("chk-waves").checked;
+    setRunning(true);
+    setStatus("Running\u2026", true);
+
+    const clean = document.getElementById("chk-clean").checked ? "1" : "0";
+    let url = `/stream?mode=${encodeURIComponent(selectedMode)}&clean=${clean}`;
+    if (wavesEnabled) url += "&waves=1";
+    const tcFilters = getTCFilters();
+    if (tcFilters) url += `&tests=${encodeURIComponent(tcFilters)}`;
+    if (selectedMode==="custom") {
+      url += `&s_width=${document.getElementById("inp-s-width").value}`;
+      url += `&m_width=${document.getElementById("inp-m-width").value}`;
+      url += `&addr_width=${document.getElementById("inp-addr-width").value}`;
+      url += `&sym_width=${document.getElementById("inp-sym-width").value}`;
+    }
+
+    evtSource = new EventSource(url);
+    evtSource.onmessage = function(e) {
+      const line = e.data;
+      if (line.startsWith("__EXIT__")) {
+        const code = parseInt(line.replace("__EXIT__",""), 10);
+        evtSource.close();
+        setRunning(false);
+        setStatus(code===0 ? "All passed \u2713" : "Some failed \u2717", false);
+        showResult(code);
+        if (wavesEnabled) loadWaveList();
+        return;
+      }
+      appendLine(line);
+    };
+    evtSource.onerror = function() {
+      appendLine("[UI] Connection lost or server error.");
+      evtSource.close(); setRunning(false); setStatus("Error", false);
+    };
+  }
+
+  // ── AI Chat ─────────────────────────────────────────────────────
+  let chatHistory  = [];   // [{role, content}, …]
+  let _pendingToml = null; // proposed config waiting for user confirmation
+
+  // Fetch AI backend info and display in the badge
+  fetch("/ai/status").then(r=>r.ok?r.json():null).then(d=>{
+    if (!d) return;
+    const badge = document.getElementById("chat-model-badge");
+    if (badge) badge.textContent = `${d.model}  \u00b7  ${d.base_url}`;
+  }).catch(()=>{});
+
+  // Send on Ctrl+Enter / Cmd+Enter
+  function chatKeyDown(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); sendChat(); }
+  }
+
+  async function sendChat() {
+    const input = document.getElementById("chat-input");
+    const msg   = input.value.trim();
+    if (!msg) return;
+    input.value = "";
+    input.style.height = "";
+
+    _removePlaceholder();
+    _appendChatMsg("user", msg);
+    chatHistory.push({role:"user", content:msg});
+
+    const sendBtn = document.getElementById("btn-chat-send");
+    sendBtn.disabled = true;
+
+    // Create the assistant bubble immediately with a blinking cursor
+    const replyId = `cm-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
+    const msgs = document.getElementById("chat-messages");
+    const div  = document.createElement("div");
+    div.id        = replyId;
+    div.className = "chat-msg chat-msg-assistant";
+    div.innerHTML = '<span class="chat-thinking">&#x23F3; Thinking&hellip;</span>';
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+
+    let fullReply = "";
+
+    try {
+      const res = await fetch("/chat", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          message: msg,
+          history: chatHistory.slice(0, -1),
+          output:  terminalOutput.slice(-8000),
+        }),
+      });
+
+      if (!res.ok || !res.body) {
+        div.innerHTML = `\u26a0\ufe0f HTTP error ${res.status}`;
+        return;
+      }
+
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let   buf     = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+
+        // Process all complete SSE lines in the buffer
+        let nl;
+        while ((nl = buf.indexOf("\n\n")) !== -1) {
+          const line = buf.slice(0, nl);
+          buf = buf.slice(nl + 2);
+          if (!line.startsWith("data: ")) continue;
+          const chunk = line.slice(6);  // strip "data: "
+
+          if (chunk.startsWith("__ERROR__")) {
+            const errMsg = chunk.slice(9);
+            div.innerHTML = `\u26a0\ufe0f Error: ${errMsg}`;
+            return;
+          }
+
+          if (chunk.startsWith("__DONE__")) {
+            // Render final markdown and check for proposed config
+            div.innerHTML = _renderChatContent(fullReply);
+            msgs.scrollTop = msgs.scrollHeight;
+            chatHistory.push({role:"assistant", content: fullReply});
+            try {
+              const meta = JSON.parse(chunk.slice(8));
+              if (meta.proposed_config) _showProposedConfig(meta.proposed_config);
+            } catch(_) {}
+            return;
+          }
+
+          // Regular token – decode escaped newlines then append
+          const token = chunk.replace(/\\n/g, "\n").replace(/\\\\/g, "\\");
+          fullReply  += token;
+
+          // Live plain-text preview while streaming
+          div.textContent = fullReply + "\u258c";  // block cursor
+          msgs.scrollTop  = msgs.scrollHeight;
+        }
+      }
+
+      // Stream ended without __DONE__ – render whatever we got
+      div.innerHTML = _renderChatContent(fullReply) || '<em>(empty response)</em>';
+      if (fullReply) chatHistory.push({role:"assistant", content: fullReply});
+
+    } catch(err) {
+      div.innerHTML = `\u26a0\ufe0f Network error: ${err.message}`;
+    } finally {
+      sendBtn.disabled = false;
+    }
+  }
+
+  function _removePlaceholder() {
+    document.getElementById("chat-placeholder")?.remove();
+  }
+
+  function _appendChatMsg(role, content, thinking=false) {
+    const msgs = document.getElementById("chat-messages");
+    const div  = document.createElement("div");
+    const id   = `cm-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
+    div.id        = id;
+    div.className = `chat-msg chat-msg-${role}`;
+    if (thinking) {
+      div.innerHTML = '<span class="chat-thinking">\u23f3 Thinking\u2026</span>';
+    } else {
+      div.innerHTML = _renderChatContent(content || "");
+    }
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+    return id;
+  }
+
+  function _renderChatContent(text) {
+    // Escape HTML first
+    let s = text
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    // Fenced ```toml blocks (highlight with accent border)
+    s = s.replace(/```toml([\s\S]*?)```/g,
+      (_,c)=>`<pre class="chat-code chat-code-toml"><code>${c}</code></pre>`);
+    // Other fenced blocks
+    s = s.replace(/```[a-z]*([\s\S]*?)```/g,
+      (_,c)=>`<pre class="chat-code"><code>${c}</code></pre>`);
+    // Inline code
+    s = s.replace(/`([^`]+)`/g,'<code class="chat-inline-code">$1</code>');
+    // Bold
+    s = s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+    // Newlines outside pre blocks
+    s = s.replace(/\n(?!\s*<\/?(pre|code))/g,'<br>');
+    return s;
+  }
+
+  function _showProposedConfig(toml) {
+    _pendingToml = toml;
+    // Append a conversational confirmation bubble
+    const msgs  = document.getElementById("chat-messages");
+    const bubId = `cp-${Date.now()}`;
+    const bub   = document.createElement("div");
+    bub.id        = bubId;
+    bub.className = "chat-msg chat-msg-assistant";
+    bub.innerHTML = `
+      <div style="margin-bottom:10px;">
+        I’ve drafted a configuration change based on your request.
+        Would you like me to apply it to the current session?
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-run"   style="padding:5px 18px;font-size:.82rem;"
+                onclick="_confirmApply('${bubId}', true)">Yes, apply it</button>
+        <button class="btn btn-clear" style="padding:5px 14px;font-size:.82rem;"
+                onclick="_confirmApply('${bubId}', false)">No, discard</button>
+      </div>`;
+    msgs.appendChild(bub);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  async function _confirmApply(bubId, apply) {
+    const bub = document.getElementById(bubId);
+    if (!apply) {
+      if (bub) bub.innerHTML = '<em style="color:var(--muted);">Configuration change discarded.</em>';
+      _pendingToml = null;
+      chatHistory.push({role:"assistant", content:"Configuration change discarded."});
+      return;
+    }
+    if (!_pendingToml) return;
+    if (bub) bub.innerHTML = '<span class="chat-thinking">⏳ Applying…</span>';
+    const toml   = _pendingToml;
+    _pendingToml = null;
+    try {
+      const res  = await fetch("/config/apply", {
+        method:  "POST",
+        headers: {"Content-Type": "application/json"},
+        body:    JSON.stringify({content: toml}),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        if (bub) bub.innerHTML = '✓ Configuration applied — reloading to show updated modes and test cases…';
+        chatHistory.push({role:"assistant", content:"Configuration applied."});
+        setTimeout(() => location.reload(), 1600);
+      } else {
+        if (bub) bub.innerHTML = `⚠️ Failed to apply: ${data.error}`;
+      }
+    } catch(err) {
+      if (bub) bub.innerHTML = `⚠️ Network error: ${err.message}`;
+    }
+  }
+
+  // Initialise test-case selection on page load
+  initTC();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Help – avalon_mm_width_adapter</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0d1117;
+    --surface:   #161b22;
+    --border:    #30363d;
+    --text:      #c9d1d9;
+    --muted:     #8b949e;
+    --accent:    #58a6ff;
+    --pass:      #3fb950;
+    --fail:      #f85149;
+    --warn:      #d29922;
+    --start:     #79c0ff;
+    --summary:   #e3b341;
+    --radius:    8px;
+    --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px 64px;
+  }
+
+  /* ── Layout ── */
+  .page { width: 100%; max-width: 900px; }
+
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+  }
+  header h1 {
+    font-size: 1.45rem;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: .02em;
+  }
+  header p { margin-top: 4px; font-size: .88rem; color: var(--muted); }
+
+  .back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-size: .85rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: border-color .15s, color .15s;
+    white-space: nowrap;
+  }
+  .back-btn:hover { border-color: var(--text); color: var(--text); }
+
+  /* ── TOC sidebar + content ── */
+  .layout {
+    display: flex;
+    gap: 28px;
+    align-items: flex-start;
+  }
+  nav {
+    width: 210px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 24px;
+  }
+  nav ul {
+    list-style: none;
+    border-left: 2px solid var(--border);
+    padding-left: 12px;
+  }
+  nav li + li { margin-top: 4px; }
+  nav a {
+    font-size: .8rem;
+    color: var(--muted);
+    text-decoration: none;
+    display: block;
+    padding: 2px 0;
+    transition: color .12s;
+  }
+  nav a:hover, nav a.active { color: var(--accent); }
+  nav .nav-section {
+    font-size: .69rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--border);
+    margin: 14px 0 6px -12px;
+    padding-left: 12px;
+  }
+
+  .content { flex: 1; min-width: 0; }
+
+  /* ── Section ── */
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px 28px 24px;
+    margin-bottom: 22px;
+    scroll-margin-top: 24px;
+  }
+  .section h2 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section h2 .icon { font-size: 1rem; }
+  .section h3 {
+    font-size: .88rem;
+    font-weight: 700;
+    color: var(--text);
+    margin: 20px 0 8px;
+  }
+  .section h3:first-of-type { margin-top: 6px; }
+  p { font-size: .87rem; color: var(--muted); line-height: 1.7; margin-bottom: 10px; }
+  p:last-child { margin-bottom: 0; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ── Param table ── */
+  .param-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .83rem;
+    margin-top: 8px;
+  }
+  .param-table th {
+    text-align: left;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    padding: 6px 10px;
+  }
+  .param-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #1c2128;
+    vertical-align: top;
+    line-height: 1.55;
+  }
+  .param-table tr:last-child td { border-bottom: none; }
+  .param-table tr:hover td { background: #0d1117; }
+  .param-table td:first-child {
+    font-family: var(--font-mono);
+    font-size: .8rem;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  .param-table td:nth-child(2) {
+    font-family: var(--font-mono);
+    color: var(--warn);
+    white-space: nowrap;
+  }
+  .param-table td:nth-child(3) {
+    font-family: var(--font-mono);
+    color: var(--pass);
+    white-space: nowrap;
+  }
+  .param-table td:nth-child(4) { color: var(--muted); }
+
+  /* ── Test case cards ── */
+  .test-group { margin-bottom: 28px; }
+  .test-group h3 {
+    font-size: .82rem;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 6px 0 6px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .badge {
+    font-size: .68rem;
+    font-weight: 700;
+    border-radius: 12px;
+    padding: 1px 7px;
+    letter-spacing: .04em;
+    background: #1c2940;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+  }
+  .tc-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+  .tc-card summary {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    cursor: pointer;
+    list-style: none;
+    transition: background .1s;
+  }
+  .tc-card summary::-webkit-details-marker { display: none; }
+  .tc-card summary:hover { background: #0d1117; }
+  details[open] .tc-card summary { background: #0d1f17; border-bottom: 1px solid var(--border); }
+  .tc-chevron { font-size: .65rem; color: var(--muted); transition: transform .15s; }
+  details[open] .tc-chevron { transform: rotate(90deg); }
+  .tc-name {
+    font-family: var(--font-mono);
+    font-size: .82rem;
+    color: var(--start);
+    font-weight: 600;
+  }
+  .tc-short { font-size: .8rem; color: var(--muted); margin-left: auto; }
+  .tc-body {
+    padding: 14px 18px 16px 42px;
+    font-size: .84rem;
+    line-height: 1.7;
+    color: var(--muted);
+  }
+  .tc-body p { margin-bottom: 8px; }
+  .tc-body ul { padding-left: 18px; margin-bottom: 8px; }
+  .tc-body li { margin-bottom: 4px; }
+  .tc-body li::marker { color: var(--accent); }
+  .tc-body strong { color: var(--text); font-weight: 600; }
+
+  /* ── Slot diagram ── */
+  .diagram {
+    font-family: var(--font-mono);
+    font-size: .77rem;
+    background: #010409;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    color: var(--text);
+    line-height: 1.6;
+    margin: 10px 0;
+  }
+  .diagram .hl { color: var(--accent); }
+  .diagram .hl2 { color: var(--warn); }
+  .diagram .comment { color: var(--muted); }
+
+  /* ── Constraint callout ── */
+  .callout {
+    border-radius: 6px;
+    padding: 12px 16px;
+    font-size: .83rem;
+    line-height: 1.6;
+    margin: 12px 0;
+    border-left: 3px solid;
+  }
+  .callout.info  { background:#0d1e38; border-color:var(--accent); color:var(--text); }
+  .callout.warn  { background:#2a1f00; border-color:var(--warn);   color:var(--text); }
+  .callout.pass  { background:#0d1f17; border-color:var(--pass);   color:var(--text); }
+  .callout strong { font-weight: 700; }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: .83em;
+    color: var(--accent);
+    background: #161b22;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 1px 5px;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div>
+      <h1>⚡ avalon_mm_width_adapter</h1>
+      <p>Help &amp; Reference — Test Runner, Generics &amp; Test Cases</p>
+    </div>
+    <a class="back-btn" href="/">&#8592; Back to Runner</a>
+  </header>
+
+  <div class="layout">
+
+    <!-- ── Table of Contents ── -->
+    <nav>
+      <ul>
+        <li class="nav-section">Overview</li>
+        <li><a href="#overview">What the DUT does</a></li>
+        <li><a href="#slots">Slot addressing</a></li>
+
+        <li class="nav-section">Generics</li>
+        <li><a href="#generics">VHDL generics</a></li>
+        <li><a href="#constraints">Valid configurations</a></li>
+
+        <li class="nav-section">Test Cases</li>
+        <li><a href="#tc-upsize">Upsize tests</a></li>
+        <li><a href="#tc-downsize">Downsize tests</a></li>
+        <li><a href="#tc-passthrough">Pass-through tests</a></li>
+
+        <li class="nav-section">UI Guide</li>
+        <li><a href="#ui-modes">Operational modes</a></li>
+        <li><a href="#ui-custom">Custom widths</a></li>
+        <li><a href="#ui-waves">Waveform viewer</a></li>
+      </ul>
+    </nav>
+
+    <!-- ── Content ── -->
+    <div class="content">
+
+      <!-- Overview -->
+      <div class="section" id="overview">
+        <h2><span class="icon">📖</span> What the DUT does</h2>
+        <p>
+          <code>avalon_mm_width_adapter</code> bridges Avalon‑MM master and slave interfaces that
+          have different data widths. A single RTL entity covers three operating modes, selected
+          automatically at synthesis time by the generic values:
+        </p>
+        <h3>Upsize</h3>
+        <p>
+          The slave-side data bus is <em>narrower</em> than the master side
+          (<code>S_DATA_WIDTH &lt; M_DATA_WIDTH</code>).
+          The adapter accumulates or fans-out narrow slave transactions into wider master
+          transactions. Each slave word occupies one <em>slot</em> in the wider master word.
+          Only a single master transaction is issued per slave transaction — the slot index
+          derived from the slave address determines which byte lanes are active.
+        </p>
+        <h3>Downsize</h3>
+        <p>
+          The slave-side bus is <em>wider</em> than the master side
+          (<code>S_DATA_WIDTH &gt; M_DATA_WIDTH</code>).
+          One slave transaction is split into multiple sequential master transactions,
+          one per narrow slot. Read responses are reassembled before the slave sees them.
+        </p>
+        <h3>Pass-through</h3>
+        <p>
+          Equal widths (<code>S_DATA_WIDTH = M_DATA_WIDTH</code>). All signals are wired
+          directly through with zero additional latency or logic.
+        </p>
+      </div>
+
+      <!-- Slot addressing -->
+      <div class="section" id="slots">
+        <h2><span class="icon">🔢</span> Slot addressing</h2>
+        <p>
+          When the master bus is wider than the slave bus, the master word is divided into
+          equally-sized <strong>slots</strong>. The slot index selects which portion of the
+          master data bus a slave transaction maps to.
+        </p>
+        <p>
+          The slot index is extracted from the lower bits of the slave address — specifically
+          the bits that would be zero on an aligned master address:
+        </p>
+        <div class="diagram">
+<span class="comment">-- Example: S_DATA_WIDTH=32, M_DATA_WIDTH=64  →  2 slots, slot_bits = 1</span>
+
+  slave address 0x0000_0000  →  slot 0  →  master[31:0]   (byte-enables [3:0])
+  slave address 0x0000_0004  →  slot 1  →  master[63:32]  (byte-enables [7:4])
+
+<span class="comment">-- Example: S_DATA_WIDTH=32, M_DATA_WIDTH=128  →  4 slots, slot_bits = 2</span>
+
+  slave address 0x0000_0000  →  slot 0  →  master[31:0]    be[3:0]
+  slave address 0x0000_0004  →  slot 1  →  master[63:32]   be[7:4]
+  slave address 0x0000_0008  →  slot 2  →  master[95:64]   be[11:8]
+  slave address 0x0000_000C  →  slot 3  →  master[127:96]  be[15:12]
+        </div>
+        <div class="callout info">
+          <strong>Note:</strong> The test bench currently exercises slot&nbsp;0 and slot&nbsp;1.
+          For a 32→128 upsize these are the same two tests as 32→64 upsizing; the master bus
+          is simply wider while the slot mapping logic is identical.
+        </div>
+      </div>
+
+      <!-- Generics -->
+      <div class="section" id="generics">
+        <h2><span class="icon">⚙️</span> VHDL Generics</h2>
+        <table class="param-table">
+          <thead>
+            <tr>
+              <th>Generic</th>
+              <th>Type</th>
+              <th>Default</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>ADDR_WIDTH</td>
+              <td>integer</td>
+              <td>32</td>
+              <td>Width of the Avalon-MM address bus in bits. Must be ≥ 1.</td>
+            </tr>
+            <tr>
+              <td>S_DATA_WIDTH</td>
+              <td>integer</td>
+              <td>32</td>
+              <td>
+                Width of the <em>slave</em>-side data bus in bits.
+                Must be a positive integer multiple of <code>SYMBOL_WIDTH</code>
+                and a power-of-two multiple of <code>M_DATA_WIDTH</code>
+                (or vice-versa).
+              </td>
+            </tr>
+            <tr>
+              <td>M_DATA_WIDTH</td>
+              <td>integer</td>
+              <td>64</td>
+              <td>
+                Width of the <em>master</em>-side data bus in bits.
+                Same constraints as <code>S_DATA_WIDTH</code>.
+              </td>
+            </tr>
+            <tr>
+              <td>SYMBOL_WIDTH</td>
+              <td>integer</td>
+              <td>8</td>
+              <td>
+                Bits per addressable symbol (almost always 8). Determines the width of
+                the byte-enable vectors:
+                <code>S_BYTES = S_DATA_WIDTH / SYMBOL_WIDTH</code>,
+                <code>M_BYTES = M_DATA_WIDTH / SYMBOL_WIDTH</code>.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <h3>Derived port widths</h3>
+        <table class="param-table">
+          <thead>
+            <tr><th>Port</th><th>Width formula</th><th>Example (32→64)</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>s_address</td><td>ADDR_WIDTH</td><td>32 bits</td></tr>
+            <tr><td>s_writedata / s_readdata</td><td>S_DATA_WIDTH</td><td>32 bits</td></tr>
+            <tr><td>s_byteenable</td><td>S_DATA_WIDTH / SYMBOL_WIDTH</td><td>4 bits</td></tr>
+            <tr><td>m_address</td><td>ADDR_WIDTH</td><td>32 bits</td></tr>
+            <tr><td>m_writedata / m_readdata</td><td>M_DATA_WIDTH</td><td>64 bits</td></tr>
+            <tr><td>m_byteenable</td><td>M_DATA_WIDTH / SYMBOL_WIDTH</td><td>8 bits</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Constraints -->
+      <div class="section" id="constraints">
+        <h2><span class="icon">📐</span> Valid configurations</h2>
+        <div class="callout warn">
+          <strong>All three rules must hold simultaneously:</strong>
+        </div>
+        <h3>Rule 1 — Divisibility</h3>
+        <p>
+          Both <code>S_DATA_WIDTH</code> and <code>M_DATA_WIDTH</code> must each be an exact
+          positive integer multiple of <code>SYMBOL_WIDTH</code>:
+        </p>
+        <div class="diagram">
+  S_DATA_WIDTH mod SYMBOL_WIDTH = 0  <span class="comment">-- e.g. 32 mod 8 = 0 ✓</span>
+  M_DATA_WIDTH mod SYMBOL_WIDTH = 0  <span class="comment">-- e.g. 64 mod 8 = 0 ✓</span>
+        </div>
+        <h3>Rule 2 — Power-of-two ratio</h3>
+        <p>
+          The ratio between the wider and narrower data width must be an exact power of two.
+          Ratio = <code>max(S,M) / min(S,M)</code>.
+        </p>
+        <div class="diagram">
+  <span class="hl">Valid:</span>   32→64  (ratio 2)   32→128 (ratio 4)   64→32 (ratio 2)
+  <span class="hl2">Invalid:</span> 32→96  (ratio 3)   32→48  (ratio 1.5)
+        </div>
+        <h3>Rule 3 — Minimum width</h3>
+        <p>Each data width must be at least <code>SYMBOL_WIDTH</code> bits wide.</p>
+        <div class="callout pass">
+          <strong>Pre-defined configurations</strong> in the test runner (32→64, 32→128, 64→32,
+          32→32) all satisfy these rules. The <em>Custom Widths</em> mode validates them
+          live in the UI before allowing a run.
+        </div>
+      </div>
+
+      <!-- Upsize test cases -->
+      <div class="section" id="tc-upsize">
+        <h2><span class="icon">⬆️</span> Upsize test cases</h2>
+        <p>
+          These seven tests apply to both the 32→64 and 32→128 configurations. In both
+          cases the slave is 32 bits wide; the master bus width changes but the slot
+          addressing logic is identical.
+        </p>
+
+        <div class="test-group">
+          <h3>Write tests <span class="badge">Write path</span></h3>
+
+          <details>
+            <summary class="tc-card">
+              <span class="tc-chevron">&#9654;</span>
+              <span class="tc-name">test_upsize_write_slot0</span>
+              <span class="tc-short">Write into slot 0</span>
+            </summary>
+            <div class="tc-body">
+              <p>
+                Issues a 32-bit slave write to address <code>0x0000_0000</code>. Because
+                the address lower bits are zero, the slot index is <strong>0</strong>,
+                meaning the slave data must land in the <em>lowest</em> 32-bit lane of the
+                master word.
+              </p>
+              <p><strong>What is verified:</strong></p>
+              <ul>
+                <li>The adapter issues exactly one master write transaction.</li>
+                <li>Master <code>m_writedata[31:0]</code> equals the slave <code>s_writedata</code>.</li>
+                <li>Master <code>m_byteenable[3:0]</code> equals the slave <code>s_byteenable[3:0]</code>;
+                    the upper byte-enable lanes are zero.</li>
+                <li>Slave <code>s_waitrequest</code> is deasserted after the master accepts the beat.</li>
+              </ul>
+            </div>
+          </details>
+
+          <details>
+            <summary class="tc-card">
+              <span class="tc-chevron">&#9654;</span>
+              <span class="tc-name">test_upsize_write_slot1</span>
+              <span class="tc-short">Write into slot 1</span>
+            </summary>
+            <div class="tc-body">
+              <p>
+                Issues a 32-bit slave write to address <code>0x0000_0004</code> (one
+                slave-word offset). The slot index becomes <strong>1</strong>, so data
+                must appear in the <em>second</em> 32-bit lane of the master word.
+              </p>
+              <p><strong>What is verified:</strong></p>
+              <ul>
+                <li>Master <code>m_writedata[63:32]</code> (or <code>[63:32]</code> for 32→64)
+                    equals <code>s_writedata</code>.</li>
+                <li>Master byte-enables are shifted: only <code>m_byteenable[7:4]</code>
+                    (32→64) or the corresponding lane (32→128) is active.</li>
+                <li>Lower byte-enable and data lanes are zero.</li>
+              </ul>
+            </div>
+          </details>
+        </div>
+
+        <div class="test-group">
+          <h3>Read tests <span class="badge">Read path</span></h3>
+
+          <details>
+            <summary class="tc-card">
+              <span class="tc-chevron">&#9654;</span>
+              <span class="tc-name">test_upsize_read_slot0</span>
+              <span class="tc-short">Read from slot 0</span>
+            </summary>
+            <div class="tc-body">
+              <p>
+                Issues a 32-bit slave read to address <code>0x0000_0000</code> (slot 0).
+                The adapter must issue one master read, wait for <code>m_readdatavalid</code>,
+                then extract the lower 32 bits and present them on <code>s_readdata</code>.
+              </p>
+              <p><strong>What is verified:</strong></p>
+              <ul>
+                <li>Exactly one master read transaction is issued (<code>m_read</code> pulses once).</li>
+                <li><code>s_readdata</code> equals <code>m_readdata[31:0]</code>.</li>
+                <li><code>s_readdatavalid</code> is asserted exactly when the master response arrives.</li>
+                <li>The slave sees no spurious waitrequest after the response.</li>
+              </ul>
+            </div>
+          </details>
+
+          <details>
+            <summary class="tc-card">
+              <span class="tc-chevron">&#9654;</span>
+              <span class="tc-name">test_upsize_read_slot1</span>
+              <span class="tc-short">Read from slot 1</span>
+            </summary>
+            <div class="tc-body">
+              <p>
+                Issues a 32-bit slave read to address <code>0x0000_0004</code> (slot 1).
+                The adapter must extract the <em>second</em> 32-bit lane from the master's
+                wider read response.
+              </p>
+              <p><strong>What is verified:</strong></p>
+              <ul>
+                <li><code>s_readdata</code> equals <code>m_readdata[63:32]</code> (32→64) or
+                    <code>m_readdata[63:32]</code> (32→128 slot 1).</li>
+                <li>Only the correct lane is extracted; no data from other slots leaks through.</li>
+              </ul>
+            </div>
+          </details>
+        </div>
+
+        <div class="test-group">
+          <h3>Special cases <span class="badge">Protocol edge cases</span></h3>
+
+          <details>
+            <summary class="tc-card">
+              <span class="tc-chevron">&#9654;</span>
+              <span class="tc-name">test_upsize_byteenable</span>
+              <span class="tc-short">Partial byte-enables</span>
+            </summary>
+            <div class="tc-body">
+              <p>
+                Issues a write with a sparse byte-enable mask (e.g. <code>s_byteenable = 4'b0101</code>
+                — only bytes 0 and 2 enabled). The adapter must position this mask correctly
+                within the wider master byte-enable vector for the target slot.
+              </p>
+              <p><strong>What is verified:</strong></p>
+              <ul>
+                <li>Only the enabled slave bytes are marked active in the master byte-enable.</li>
+                <li>Other master byte-enable bits remain zero regardless of slot position.</li>
+                <li>Data in the disabled bytes is not required to be any specific value.</li>
+              </ul>
+            </div>
+          </details>
+
+          <details>
+            <summary class="tc-card">
+              <span class="tc-chevron">&#9654;</span>
+              <span class="tc-name">test_upsize_waitrequest</span>
+              <span class="tc-short">Master backpressure</span>
+            </summary>
+            <div class="tc-body">
+              <p>
+                A slave write is issued while the master memory model asserts
+                <code>m_waitrequest</code> for one clock cycle before accepting the beat.
+                The adapter must hold the transfer valid while backpressure is active.
+              </p>
+              <p><strong>What is verified:</strong></p>
+              <ul>
+                <li>The adapter keeps <code>m_write</code>, <code>m_address</code>,
+                    <code>m_writedata</code>, and <code>m_byteenable</code> stable during
+                    backpressure.</li>
+                <li><code>s_waitrequest</code> is asserted to the slave while waiting, then
+                    released once the master accepts.</li>
+                <li>The write data is not corrupted or lost.</li>
+              </ul>
+            </div>
+          </details>
+
+          <details>
+            <summary class="tc-card">
+              <span class="tc-chevron">&#9654;</span>
+              <span class="tc-name">test_upsize_pipelined_reads</span>
+              <span class="tc-short">Pipelined outstanding reads</span>
+            </summary>
+            <div class="tc-body">
+              <p>
+                Issues two back-to-back slave reads targeting <em>different slots</em> before
+                the first master response returns. This exercises the slot-tracking FIFO
+                (<code>us_idx_fifo</code>) inside the adapter that records which lane to extract
+                for each pending read.
+              </p>
+              <p><strong>What is verified:</strong></p>
+              <ul>
+                <li>The adapter can accept a second slave read while the first master response
+                    is still outstanding.</li>
+                <li>Responses are returned in order: slot-0 data appears on <code>s_readdata</code>
+                    first, then slot-1 data on the following valid cycle.</li>
+                <li>No read response is dropped or assigned to the wrong slave transaction.</li>
+              </ul>
+              <div class="callout info">
+                <strong>Why a FIFO?</strong> Because the master bus is pipelined (multiple reads can
+                be outstanding), the adapter cannot derive the slot index from the master response
+                alone — it must remember the order in which reads were issued. The FIFO stores
+                one slot index entry per in-flight read.
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <!-- Downsize test cases -->
+      <div class="section" id="tc-downsize">
+        <h2><span class="icon">⬇️</span> Downsize test cases</h2>
+        <p>
+          These four tests use the 64→32 configuration: the slave sees a 64-bit bus,
+          the master is 32 bits. One slave transaction is split into two sequential master
+          transactions (beats).
+        </p>
+
+        <details>
+          <summary class="tc-card">
+            <span class="tc-chevron">&#9654;</span>
+            <span class="tc-name">test_downsize_write</span>
+            <span class="tc-short">64-bit write split into two 32-bit writes</span>
+          </summary>
+          <div class="tc-body">
+            <p>
+              A single 64-bit slave write is decomposed into two sequential 32-bit master writes.
+              Beat 0 carries the lower 32 bits to the base address; beat 1 carries the upper
+              32 bits to base address + 4.
+            </p>
+            <p><strong>What is verified:</strong></p>
+            <ul>
+              <li>The adapter asserts <code>s_waitrequest</code> while both master beats are issued.</li>
+              <li>Beat 0: <code>m_address = s_address</code>, <code>m_writedata = s_writedata[31:0]</code>,
+                  <code>m_byteenable = s_byteenable[3:0]</code>.</li>
+              <li>Beat 1: <code>m_address = s_address + 4</code>, upper half of data and byte-enables.</li>
+              <li><code>s_waitrequest</code> is released only after the second master beat completes.</li>
+            </ul>
+          </div>
+        </details>
+
+        <details>
+          <summary class="tc-card">
+            <span class="tc-chevron">&#9654;</span>
+            <span class="tc-name">test_downsize_read</span>
+            <span class="tc-short">Two 32-bit reads reassembled into one 64-bit response</span>
+          </summary>
+          <div class="tc-body">
+            <p>
+              A single 64-bit slave read triggers two 32-bit master reads. The two responses
+              are concatenated and presented as one 64-bit slave read response.
+            </p>
+            <p><strong>What is verified:</strong></p>
+            <ul>
+              <li>Two master reads are issued to consecutive addresses.</li>
+              <li><code>s_readdata[31:0]</code> equals the first master response.</li>
+              <li><code>s_readdata[63:32]</code> equals the second master response.</li>
+              <li><code>s_readdatavalid</code> is asserted only after both responses are received.</li>
+            </ul>
+          </div>
+        </details>
+
+        <details>
+          <summary class="tc-card">
+            <span class="tc-chevron">&#9654;</span>
+            <span class="tc-name">test_downsize_partial_be</span>
+            <span class="tc-short">Sparse byte-enables suppress sub-beats</span>
+          </summary>
+          <div class="tc-body">
+            <p>
+              A 64-bit slave write is issued with byte-enables that only activate bytes in the
+              <em>upper</em> half (e.g. <code>s_byteenable = 8'b1111_0000</code>).
+              The adapter should suppress the first master write beat entirely and only
+              issue the second beat.
+            </p>
+            <p><strong>What is verified:</strong></p>
+            <ul>
+              <li>Only one master write is issued (the upper beat with non-zero byte-enables).</li>
+              <li>No spurious master write to the lower address occurs.</li>
+              <li>The slave receives its acknowledgement after the single active beat completes.</li>
+            </ul>
+          </div>
+        </details>
+
+        <details>
+          <summary class="tc-card">
+            <span class="tc-chevron">&#9654;</span>
+            <span class="tc-name">test_downsize_waitrequest</span>
+            <span class="tc-short">Master backpressure during multi-beat sequence</span>
+          </summary>
+          <div class="tc-body">
+            <p>
+              The master asserts <code>m_waitrequest</code> during the first beat of a
+              two-beat downsize write. The adapter must
+              stall that beat and then resume the sequence correctly.
+            </p>
+            <p><strong>What is verified:</strong></p>
+            <ul>
+              <li>The first beat is held stable while <code>m_waitrequest</code> is high.</li>
+              <li>After backpressure releases, the first beat completes and the second beat
+                  is issued without loss.</li>
+              <li>The slave's <code>s_waitrequest</code> remains asserted until both beats are done.</li>
+            </ul>
+          </div>
+        </details>
+      </div>
+
+      <!-- Pass-through test cases -->
+      <div class="section" id="tc-passthrough">
+        <h2><span class="icon">➡️</span> Pass-through test cases</h2>
+        <p>
+          These three tests use the 32→32 configuration where slave and master widths match.
+          No data transformation occurs; the adapter is purely combinational wiring.
+        </p>
+
+        <details>
+          <summary class="tc-card">
+            <span class="tc-chevron">&#9654;</span>
+            <span class="tc-name">test_passthrough_write</span>
+            <span class="tc-short">Write signals forwarded unchanged</span>
+          </summary>
+          <div class="tc-body">
+            <p>
+              A 32-bit slave write is presented at the slave port. All write signals must
+              appear at the master port with zero additional latency.
+            </p>
+            <p><strong>What is verified:</strong></p>
+            <ul>
+              <li><code>m_address = s_address</code></li>
+              <li><code>m_writedata = s_writedata</code></li>
+              <li><code>m_byteenable = s_byteenable</code></li>
+              <li><code>m_write = s_write</code> (combinational — no registered delay)</li>
+            </ul>
+          </div>
+        </details>
+
+        <details>
+          <summary class="tc-card">
+            <span class="tc-chevron">&#9654;</span>
+            <span class="tc-name">test_passthrough_read</span>
+            <span class="tc-short">Read response forwarded unchanged</span>
+          </summary>
+          <div class="tc-body">
+            <p>
+              A slave read request is forwarded to the master. The master's read response
+              (<code>m_readdata</code>, <code>m_readdatavalid</code>) is wired directly back
+              to the slave.
+            </p>
+            <p><strong>What is verified:</strong></p>
+            <ul>
+              <li><code>s_readdata = m_readdata</code> when valid.</li>
+              <li><code>s_readdatavalid = m_readdatavalid</code> (no buffering).</li>
+            </ul>
+          </div>
+        </details>
+
+        <details>
+          <summary class="tc-card">
+            <span class="tc-chevron">&#9654;</span>
+            <span class="tc-name">test_passthrough_waitrequest</span>
+            <span class="tc-short">Backpressure forwarded unchanged</span>
+          </summary>
+          <div class="tc-body">
+            <p>
+              The master asserts <code>m_waitrequest</code> for one cycle. In pass-through
+              mode this signal must propagate directly to <code>s_waitrequest</code> with
+              no additional registered delay.
+            </p>
+            <p><strong>What is verified:</strong></p>
+            <ul>
+              <li><code>s_waitrequest = m_waitrequest</code> combinationally every clock cycle.</li>
+              <li>No spurious transactions are generated while backpressure is active.</li>
+            </ul>
+          </div>
+        </details>
+      </div>
+
+      <!-- UI Modes -->
+      <div class="section" id="ui-modes">
+        <h2><span class="icon">🖥️</span> Operational modes</h2>
+        <p>
+          The mode selector determines which subset of tests VUnit runs. Selecting a
+          specific mode passes a glob filter to <code>run.py</code>.
+        </p>
+        <table class="param-table">
+          <thead>
+            <tr><th>Mode</th><th>VUnit filter</th><th>Test count</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>All Tests</td>
+              <td>(none)</td>
+              <td>21</td>
+              <td>Runs every built-in configuration.</td>
+            </tr>
+            <tr>
+              <td>Upsize 32→64</td>
+              <td><code>*upsize_32_to_64*</code></td>
+              <td>7</td>
+              <td>32-bit slave, 64-bit master. Ratio = 2, slots = 2.</td>
+            </tr>
+            <tr>
+              <td>Upsize 32→128</td>
+              <td><code>*upsize_32_to_128*</code></td>
+              <td>7</td>
+              <td>32-bit slave, 128-bit master. Ratio = 4, slots = 4.</td>
+            </tr>
+            <tr>
+              <td>Downsize 64→32</td>
+              <td><code>*downsize_64_to_32*</code></td>
+              <td>4</td>
+              <td>64-bit slave, 32-bit master. Ratio = 2, beats per transaction = 2.</td>
+            </tr>
+            <tr>
+              <td>Pass-through 32→32</td>
+              <td><code>*passthrough_32_to_32*</code></td>
+              <td>3</td>
+              <td>Equal widths. All paths are combinational wire-throughs.</td>
+            </tr>
+            <tr>
+              <td>Custom Widths</td>
+              <td>generated</td>
+              <td>varies</td>
+              <td>User-supplied generics. See Custom Widths section below.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Custom widths -->
+      <div class="section" id="ui-custom">
+        <h2><span class="icon">🔧</span> Custom Widths mode</h2>
+        <p>
+          Custom Widths lets you supply arbitrary generic values at run time without editing
+          any source files. The UI validates your inputs against the three rules in
+          <a href="#constraints">Valid configurations</a> before enabling the Run button.
+        </p>
+        <table class="param-table">
+          <thead>
+            <tr><th>UI field</th><th>Maps to generic</th><th>Default</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>S_DATA_WIDTH</td>
+              <td>S_DATA_WIDTH</td>
+              <td>32</td>
+              <td>Slave bus width in bits.</td>
+            </tr>
+            <tr>
+              <td>M_DATA_WIDTH</td>
+              <td>M_DATA_WIDTH</td>
+              <td>128</td>
+              <td>Master bus width in bits.</td>
+            </tr>
+            <tr>
+              <td>ADDR_WIDTH</td>
+              <td>ADDR_WIDTH</td>
+              <td>32</td>
+              <td>Address bus width. Usually left at 32.</td>
+            </tr>
+            <tr>
+              <td>SYMBOL_WIDTH</td>
+              <td>SYMBOL_WIDTH</td>
+              <td>8</td>
+              <td>Bits per byte-enable symbol. Usually left at 8.</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          The adapter mode (upsize / downsize / pass-through) and the matching test suite are
+          inferred automatically from the <code>S_DATA_WIDTH</code> vs <code>M_DATA_WIDTH</code>
+          comparison. The run.py script receives the values via environment variables
+          (<code>VUNIT_CUSTOM_S_WIDTH</code>, <code>VUNIT_CUSTOM_M_WIDTH</code>,
+          <code>VUNIT_CUSTOM_ADDR_WIDTH</code>, <code>VUNIT_CUSTOM_SYM_WIDTH</code>).
+        </p>
+      </div>
+
+      <!-- Waveform viewer -->
+      <div class="section" id="ui-waves">
+        <h2><span class="icon">📈</span> Waveform viewer</h2>
+        <p>
+          Enable <strong>Show Waveforms</strong> before running tests. After the run finishes,
+          a Waveforms card appears below the result banner.
+        </p>
+        <h3>How it works</h3>
+        <p>
+          When waveforms are enabled, the Flask server sets the environment variable
+          <code>VUNIT_WAVE_DIR</code> before launching <code>run.py</code>. For each test
+          configuration, <code>run.py</code> passes <code>--vcd=&lt;path&gt;</code> as a GHDL
+          simulation flag. GHDL writes a standard 4-state VCD file per test.
+        </p>
+        <p>
+          The server parses the VCD at the <code>/waves/data</code> endpoint, returning JSON
+          signal data. The browser renders it on an HTML Canvas using a custom
+          <code>WaveformViewer</code> class.
+        </p>
+        <h3>Controls</h3>
+        <table class="param-table">
+          <thead><tr><th>Control</th><th>Action</th></tr></thead>
+          <tbody>
+            <tr><td>Dropdown</td><td>Select which test's waveform to display. Auto-selects if only one test was run.</td></tr>
+            <tr><td>+ Zoom / – Zoom</td><td>Zoom the time axis in or out by 35%.</td></tr>
+            <tr><td>Fit</td><td>Scale the waveform so the full simulation time fits the canvas.</td></tr>
+            <tr><td>Mouse drag</td><td>Pan the waveform left or right.</td></tr>
+            <tr><td>Scroll wheel</td><td>Zoom in/out centred on the cursor position.</td></tr>
+          </tbody>
+        </table>
+        <h3>Signal rendering</h3>
+        <table class="param-table">
+          <thead><tr><th>Signal type</th><th>Colour</th><th>Rendering style</th></tr></thead>
+          <tbody>
+            <tr><td><code>clk</code></td><td style="color:var(--start)">#79c0ff</td><td>Square-wave step function.</td></tr>
+            <tr><td>1-bit (HIGH)</td><td style="color:var(--pass)">#3fb950</td><td>Step function with green fill when HIGH.</td></tr>
+            <tr><td>1-bit (X/Z)</td><td style="color:var(--warn)">#d29922</td><td>Amber hatched box — unknown/undriven.</td></tr>
+            <tr><td>Multi-bit bus</td><td style="color:var(--accent)">#58a6ff</td><td>Hexagon shape with hex value label.</td></tr>
+          </tbody>
+        </table>
+        <div class="callout info">
+          <strong>Timescale:</strong> GHDL uses femtoseconds internally. The axis labels show
+          raw fs values (e.g. 10&thinsp;000&thinsp;000 = 10 ns). Signals are recorded only at
+          the TB level so internal DUT state is excluded.
+        </div>
+      </div>
+
+    </div><!-- /.content -->
+  </div><!-- /.layout -->
+</div><!-- /.page -->
+</body>
+</html>

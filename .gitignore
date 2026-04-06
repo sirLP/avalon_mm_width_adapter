@@ -1,0 +1,22 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# VUnit / GHDL simulation artefacts
+vunit_out/
+
+# Waveform files
+*.vcd
+*.ghw
+*.fst
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

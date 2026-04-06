@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Config Editor – avalon_mm_width_adapter</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0d1117;
+    --surface:   #161b22;
+    --border:    #30363d;
+    --text:      #c9d1d9;
+    --muted:     #8b949e;
+    --accent:    #58a6ff;
+    --pass:      #3fb950;
+    --fail:      #f85149;
+    --warn:      #d29922;
+    --radius:    8px;
+    --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px 64px;
+  }
+
+  .page { width: 100%; max-width: 960px; }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  header h1 { font-size: 1.45rem; font-weight: 600; color: var(--accent); }
+  header p  { margin-top: 4px; font-size: .88rem; color: var(--muted); }
+  .nav-btns { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    border-radius: var(--radius);
+    font-size: .85rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    transition: border-color .15s, color .15s, background .15s;
+    white-space: nowrap;
+  }
+  .btn:hover { border-color: var(--text); color: var(--text); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn-accent {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #0d1117;
+  }
+  .btn-accent:hover:not(:disabled) {
+    background: #79c0ff;
+    border-color: #79c0ff;
+    color: #0d1117;
+  }
+  .btn-accent:disabled { background: #1c2940; border-color: var(--border); color: var(--muted); }
+
+  /* ── Editor card ── */
+  .editor-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .editor-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+  }
+  .editor-toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .file-badge {
+    font-family: var(--font-mono);
+    font-size: .78rem;
+    color: var(--accent);
+    background: #0d1e38;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 8px;
+  }
+  #dirty-badge {
+    font-size: .72rem;
+    font-weight: 700;
+    color: var(--warn);
+    background: #2a1f00;
+    border: 1px solid var(--warn);
+    border-radius: 4px;
+    padding: 2px 8px;
+    display: none;
+  }
+  .editor-toolbar-right { display: flex; gap: 8px; }
+
+  /* ── Code editor area ── */
+  .editor-wrap {
+    display: flex;
+    position: relative;
+    height: 540px;
+    overflow: hidden;
+  }
+
+  #line-numbers {
+    width: 52px;
+    flex-shrink: 0;
+    background: #010409;
+    border-right: 1px solid var(--border);
+    color: #484f58;
+    font-family: var(--font-mono);
+    font-size: .815rem;
+    line-height: 1.6;
+    padding: 12px 8px 12px 0;
+    text-align: right;
+    overflow: hidden;
+    user-select: none;
+    white-space: pre;
+  }
+
+  #editor {
+    flex: 1;
+    background: #010409;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: .815rem;
+    line-height: 1.6;
+    padding: 12px 16px;
+    border: none;
+    outline: none;
+    resize: none;
+    overflow-y: auto;
+    overflow-x: auto;
+    tab-size: 2;
+    white-space: pre;
+    caret-color: var(--accent);
+    height: 100%;
+  }
+  #editor::selection { background: #264f78; }
+
+  /* ── Status bar ── */
+  .status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 16px;
+    border-top: 1px solid var(--border);
+    background: #010409;
+    font-size: .74rem;
+    font-family: var(--font-mono);
+    color: var(--muted);
+    gap: 12px;
+    min-height: 32px;
+  }
+  #status-msg.ok   { color: var(--pass); }
+  #status-msg.err  { color: var(--fail); }
+  #status-msg.warn { color: var(--warn); }
+  #status-msg.info { color: var(--muted); }
+
+  /* ── Error panel ── */
+  #error-panel {
+    background: #200a0a;
+    border: 1px solid var(--fail);
+    border-radius: 6px;
+    margin-top: 12px;
+    padding: 12px 16px;
+    font-family: var(--font-mono);
+    font-size: .79rem;
+    color: var(--fail);
+    line-height: 1.7;
+    display: none;
+    white-space: pre-wrap;
+  }
+
+  #file-input { display: none; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div>
+      <h1>⚡ avalon_mm_width_adapter</h1>
+      <p>Config Editor — session-only, file on disk is never modified</p>
+    </div>
+    <div class="nav-btns">
+      <a class="btn" href="/help">? Help</a>
+      <a class="btn" href="/">← Runner</a>
+    </div>
+  </header>
+
+  <!-- Session status banner -->
+  <div id="session-banner" class="{{ 'default' if is_default else 'modified' }}">
+    <span id="banner-text">
+      {% if is_default %}
+        <strong>Using default config</strong> — session matches
+        <code style="font-family:monospace;font-size:.9em">test_config.toml</code>
+      {% else %}
+        <strong>Session config active</strong> — differs from the on-disk default.
+        Resets on server restart.
+      {% endif %}
+    </span>
+    <button class="btn btn-warn" id="btn-reset" onclick="resetToDefault()"
+            {% if is_default %}disabled{% endif %}>
+      ↺ Reset to default
+    </button>
+  </div>
+
+  <div class="note">
+    &#128274; <code style="font-family:monospace;color:var(--accent)">test_config.toml</code>
+    on disk is <strong>read-only</strong> from the UI. <strong>Apply to session</strong>
+    activates the config for the running server without touching the file.
+    The server always boots from the file. Use <strong>Load file</strong> to try
+    a different <code style="font-family:monospace;color:var(--accent)">.toml</code>
+    from your local filesystem.
+  </div>
+
+  <div class="editor-card">
+    <div class="editor-toolbar">
+      <div class="editor-toolbar-left">
+        <span class="file-badge">test_config.toml</span>
+        <span id="dirty-badge">● unsaved</span>
+      </div>
+      <div class="editor-toolbar-right">
+        <input id="file-input" type="file" accept=".toml" onchange="loadFile(this)">
+        <button class="btn" onclick="document.getElementById('file-input').click()">
+          &#128194; Load file
+        </button>
+        <button class="btn btn-accent" id="btn-apply" onclick="applyConfig()" disabled>
+          &#10003; Apply to session
+        </button>
+      </div>
+    </div>
+
+    <div class="editor-wrap">
+      <div id="line-numbers"></div>
+      <textarea id="editor" spellcheck="false" autocorrect="off" autocapitalize="off"
+                oninput="onEdit()" onscroll="syncScroll()" onkeydown="onKeyDown(event)"
+                onmouseup="updateCursor()" onkeyup="updateCursor()">{{ session_content }}</textarea>
+    </div>
+
+    <div class="status-bar">
+      <span id="status-msg" class="info">Ready</span>
+      <span id="cursor-pos">Ln 1, Col 1</span>
+    </div>
+  </div>
+
+  <div id="error-panel"></div>
+
+</div>
+
+<script>
+  // Content currently active in the server session (may differ from the file)
+  const sessionContent = document.getElementById("editor").value;
+  // On-disk default, safe-JSON-encoded by Flask
+  const defaultContent  = {{ default_content | tojson }};
+
+  let isDirty = false;  // editor differs from sessionContent
+
+  // ── Line numbers ──────────────────────────────────────────────────
+  function updateLineNumbers() {
+    const ta    = document.getElementById("editor");
+    const lines = ta.value.split("\n").length;
+    let nums = "";
+    for (let i = 1; i <= lines; i++) nums += i + "\n";
+    document.getElementById("line-numbers").textContent = nums;
+  }
+
+  function syncScroll() {
+    document.getElementById("line-numbers").scrollTop =
+      document.getElementById("editor").scrollTop;
+  }
+
+  function updateCursor() {
+    const ta    = document.getElementById("editor");
+    const text  = ta.value.substring(0, ta.selectionStart);
+    const lines = text.split("\n");
+    document.getElementById("cursor-pos").textContent =
+      `Ln ${lines.length}, Col ${lines[lines.length - 1].length + 1}`;
+  }
+
+  // ── Edit state ──────────────────────────────────────────────────
+  function onEdit() {
+    updateLineNumbers();
+    syncScroll();
+    updateCursor();
+    setDirty(document.getElementById("editor").value !== sessionContent);
+    document.getElementById("error-panel").style.display = "none";
+    setStatus("info", "Ready");
+  }
+
+  function setDirty(d) {
+    isDirty = d;
+    document.getElementById("dirty-badge").style.display = d ? "" : "none";
+    document.getElementById("btn-apply").disabled = !d;
+  }
+
+  function setStatus(cls, msg) {
+    const el = document.getElementById("status-msg");
+    el.className = cls;
+    el.textContent = msg;
+  }
+
+  // ── Session banner ─────────────────────────────────────────────
+  function setBannerState(isDefault) {
+    const banner = document.getElementById("session-banner");
+    const text   = document.getElementById("banner-text");
+    const reset  = document.getElementById("btn-reset");
+    if (isDefault) {
+      banner.className = "default";
+      text.innerHTML = "<strong>Using default config</strong> — session matches "
+        + "<code style='font-family:monospace;font-size:.9em'>test_config.toml</code>";
+      reset.disabled = true;
+    } else {
+      banner.className = "modified";
+      text.innerHTML = "<strong>Session config active</strong> — differs from the "
+        + "on-disk default. Resets on server restart.";
+      reset.disabled = false;
+    }
+  }
+
+  // ── Keyboard ────────────────────────────────────────────────────
+  function onKeyDown(e) {
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const ta    = document.getElementById("editor");
+      const start = ta.selectionStart;
+      ta.value    = ta.value.substring(0, start) + "  " + ta.value.substring(ta.selectionEnd);
+      ta.selectionStart = ta.selectionEnd = start + 2;
+      onEdit();
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+      e.preventDefault();
+      if (isDirty) applyConfig();
+    }
+  }
+
+  // ── Load file (client-side, fills textarea only) ──────────────────
+  function loadFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById("editor").value = e.target.result;
+      onEdit();
+      setStatus("info", `Loaded: ${file.name} — click “Apply to session” to activate`);
+      input.value = "";  // allow re-selecting same file
+    };
+    reader.readAsText(file);
+  }
+
+  // ── Apply to session ────────────────────────────────────────
+  async function applyConfig() {
+    const content = document.getElementById("editor").value;
+    setStatus("info", "Applying…");
+    document.getElementById("btn-apply").disabled = true;
+    document.getElementById("error-panel").style.display = "none";
+
+    try {
+      const res  = await fetch("/config/apply", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ content }),
+      });
+      const data = await res.json();
+
+      if (data.ok) {
+        setStatus("ok", "✓ Applied — session config updated");
+        // Reload to refresh banner state and reset dirty tracking
+        setTimeout(() => location.reload(), 700);
+      } else {
+        document.getElementById("btn-apply").disabled = false;
+        setStatus("err", "✗ TOML error — not applied");
+        const ep = document.getElementById("error-panel");
+        ep.textContent = data.error;
+        ep.style.display = "";
+      }
+    } catch (err) {
+      document.getElementById("btn-apply").disabled = false;
+      setStatus("err", "✗ Network error: " + err.message);
+    }
+  }
+
+  // ── Reset to default ───────────────────────────────────────
+  async function resetToDefault() {
+    if (!confirm("Reset session config to the on-disk default?")) return;
+    setStatus("info", "Resetting…");
+    try {
+      const res  = await fetch("/config/reset", { method: "POST" });
+      const data = await res.json();
+      if (data.ok) {
+        document.getElementById("editor").value = data.content;
+        updateLineNumbers();
+        setDirty(false);
+        setBannerState(true);
+        setStatus("ok", "✓ Reset to default");
+        document.getElementById("error-panel").style.display = "none";
+      }
+    } catch (err) {
+      setStatus("err", "✗ Network error: " + err.message);
+    }
+  }
+
+  // Warn on navigate-away only if there are unapplied edits
+  window.addEventListener("beforeunload", e => {
+    if (isDirty) { e.preventDefault(); e.returnValue = ""; }
+  });
+
+  // ── Init ────────────────────────────────────────────────────────
+  updateLineNumbers();
+  updateCursor();
+</script>
+</body>
+</html>
