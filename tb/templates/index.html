@@ -531,11 +531,22 @@
     <button class="btn btn-clear" style="padding:5px 12px;font-size:.8rem;" onclick="wv&&wv.zoom(1.35)">&#43; Zoom</button>
     <button class="btn btn-clear" style="padding:5px 12px;font-size:.8rem;" onclick="wv&&wv.zoom(1/1.35)">&#8722; Zoom</button>
     <button class="btn btn-clear" style="padding:5px 12px;font-size:.8rem;" onclick="wv&&wv.fit()" title="Zoom out to show the full simulation">Fit All</button>
+    <button id="wave-sticky-btn" class="btn btn-clear" style="padding:5px 12px;font-size:.8rem;"
+            title="Snap cursors to nearest clock edge (rising or falling)"
+            onclick="if(wv){wv.stickyClk=!wv.stickyClk;var on=wv.stickyClk;this.style.background=on?'var(--accent)':'';this.style.color=on?'#fff':'';this.textContent=on?'\uD83D\uDCCC CLK snap: ON':'\uD83D\uDCCC CLK snap: OFF';}">&#x1F4CC; CLK snap: OFF</button>
+    <span style="font-size:.72rem;color:var(--muted);margin-left:6px;" title="Cursor controls">&#9901; click&#8202;=&#8202;cursor A &middot; shift+click&#8202;=&#8202;cursor B &middot; drag to move &middot; right-click to remove</span>
     <span id="wave-status" style="font-size:.78rem;margin-left:4px;"></span>
   </div>
   <div id="wave-body">
     <div id="wave-names"></div>
     <div id="wave-canvas-wrap"></div>
+  </div>
+  <div id="wave-cursor-info" style="display:flex;gap:24px;padding:5px 12px;
+       font-size:.76rem;font-family:monospace;border-top:1px solid var(--border);
+       background:#0a0f14;color:var(--muted);">
+    <span class="wci-a" style="color:rgba(255,255,255,0.75);">A: —</span>
+    <span class="wci-b" style="color:rgba(255,185,0,0.85);">B: —</span>
+    <span class="wci-d" style="color:var(--muted);">&#x0394;: —</span>
   </div>
 </div>
 
@@ -589,6 +600,9 @@
       this.timescale = data.timescale || "1 ns";
       this.ROW_H = 36; this.HDR_H = 24; this.PAD = 5;
       this.scale = 1;  this.offX  = 0;
+      this.cursorA = null;    // cursor A (white, left-click)
+      this.cursorB = null;    // cursor B (yellow, shift+click)
+      this.stickyClk = false; // snap cursors to nearest clock edge when true
       this.canvas = document.createElement("canvas");
       this.canvas.style.cssText = "display:block;cursor:grab;";
       wrapEl.innerHTML = ""; wrapEl.appendChild(this.canvas);
@@ -645,6 +659,8 @@
       }
       this._axis(c,W);
       this.signals.forEach((s,i)=>this._sig(c,s,i,W));
+      this._cursor(c,W,H);
+      this._updateDelta();
     }
 
     _axis(c,W) {
@@ -747,6 +763,72 @@
       }
     }
 
+    // Returns t snapped to the nearest clock edge, or t unchanged if no clk signal / sticky off.
+    _snapToClk(t) {
+      if (!this.stickyClk) return t;
+      const clk = this.signals.find(s => s.name === 'clk');
+      if (!clk || !clk.data || !clk.data.length) return t;
+      let best = null, bestDist = Infinity;
+      for (const [et] of clk.data) {
+        const d = Math.abs(et - t);
+        if (d < bestDist) { bestDist = d; best = et; }
+      }
+      return best !== null ? best : t;
+    }
+
+    _cursor(c,W,H) {
+      // Shaded region between A and B
+      if (this.cursorA !== null && this.cursorB !== null) {
+        const xA = this._tx(this.cursorA), xB = this._tx(this.cursorB);
+        const rx0 = Math.max(0, Math.min(xA, xB));
+        const rx1 = Math.min(W, Math.max(xA, xB));
+        if (rx1 > rx0) {
+          c.save();
+          c.fillStyle = "rgba(255,200,0,0.07)";
+          c.fillRect(rx0, this.HDR_H, rx1 - rx0, H - this.HDR_H);
+          c.restore();
+        }
+      }
+
+      const _drawOne = (t, color, dashed) => {
+        const x = this._tx(t);
+        if (x < -1 || x > W + 1) return;
+        c.save();
+        c.strokeStyle = color; c.lineWidth = 1;
+        if (dashed) c.setLineDash([4, 3]);
+        c.beginPath(); c.moveTo(x, 0); c.lineTo(x, H); c.stroke();
+        c.setLineDash([]);
+        // Triangle at top
+        c.fillStyle = color;
+        c.beginPath(); c.moveTo(x-5,0); c.lineTo(x+5,0); c.lineTo(x,8); c.closePath(); c.fill();
+        c.restore();
+      };
+
+      if (this.cursorA !== null) _drawOne(this.cursorA, "rgba(255,255,255,0.9)", false);
+      if (this.cursorB !== null) _drawOne(this.cursorB, "rgba(255,185,0,0.9)",   true);
+    }
+
+    _updateDelta() {
+      const el = document.getElementById("wave-cursor-info");
+      if (!el) return;
+      const fmt = t => `${Math.round(t)} ${this.timescale}`;
+      const aEl = el.querySelector(".wci-a");
+      const bEl = el.querySelector(".wci-b");
+      const dEl = el.querySelector(".wci-d");
+      if (aEl) aEl.textContent = this.cursorA !== null ? `A: ${fmt(this.cursorA)}` : "A: —";
+      if (bEl) bEl.textContent = this.cursorB !== null ? `B: ${fmt(this.cursorB)}` : "B: —";
+      if (dEl) {
+        if (this.cursorA !== null && this.cursorB !== null) {
+          const delta = Math.abs(this.cursorB - this.cursorA);
+          dEl.textContent = `\u0394: ${fmt(delta)}`;
+          dEl.style.color = "#f0c040";
+        } else {
+          dEl.textContent = "\u0394: —";
+          dEl.style.color = "var(--muted)";
+        }
+      }
+    }
+
     _b2h(bin,w) {
       const p=bin.padStart(w,bin[0]||"0");
       if(/^[xz]+$/.test(p)) return "X";
@@ -759,20 +841,79 @@
     }
 
     _events() {
-      let drag=false,dx=0,ox0=0;
-      this.canvas.addEventListener("mousedown",e=>{
-        drag=true;dx=e.clientX;ox0=this.offX;
-        this.canvas.style.cursor="grabbing";
+      const DRAG_THRESH = 4;  // px — below this a mousedown+up is a click
+      const SNAP = 7;         // px — proximity threshold for grabbing a cursor
+      let drag=false;
+      let dragWhich=null;     // 'A' | 'B' | null
+      let startClientX=0, startOffX=0, startOffsetX=0, startShift=false;
+
+      // Returns 'A', 'B', or null for the nearest cursor within SNAP pixels.
+      const _near = ox => {
+        const dA = this.cursorA !== null ? Math.abs(ox - this._tx(this.cursorA)) : Infinity;
+        const dB = this.cursorB !== null ? Math.abs(ox - this._tx(this.cursorB)) : Infinity;
+        if (dA < SNAP && dA <= dB) return 'A';
+        if (dB < SNAP)             return 'B';
+        return null;
+      };
+
+      this.canvas.addEventListener("mousedown", e => {
+        if (e.button !== 0) return;
+        startClientX = e.clientX; startOffX = this.offX;
+        startOffsetX = e.offsetX; startShift = e.shiftKey;
+        const near = _near(e.offsetX);
+        if (near) {
+          dragWhich = near;
+          this.canvas.style.cursor = "col-resize";
+        } else {
+          drag = true;
+          this.canvas.style.cursor = "grabbing";
+        }
       });
-      document.addEventListener("mousemove",e=>{
-        if(!drag) return;
-        const max=Math.max(0,this.endtime*this.scale-this.wrapEl.offsetWidth);
-        this.offX=Math.min(max,Math.max(0,ox0-(e.clientX-dx)));
+
+      // Right-click: remove nearest cursor; if not near either, remove both.
+      this.canvas.addEventListener("contextmenu", e => {
+        e.preventDefault();
+        const near = _near(e.offsetX);
+        if      (near === 'A') this.cursorA = null;
+        else if (near === 'B') this.cursorB = null;
+        else { this.cursorA = null; this.cursorB = null; }
         this._render();
       });
-      document.addEventListener("mouseup",()=>{
-        if(drag){drag=false;this.canvas.style.cursor="grab";}
+
+      document.addEventListener("mousemove", e => {
+        if (drag) {
+          const max=Math.max(0,this.endtime*this.scale-this.wrapEl.offsetWidth);
+          this.offX=Math.min(max,Math.max(0,startOffX-(e.clientX-startClientX)));
+          this._render();
+        }
+        if (dragWhich) {
+          const rect = this.canvas.getBoundingClientRect();
+          const t = this._snapToClk(Math.max(0, (e.clientX - rect.left + this.offX) / this.scale));
+          if (dragWhich === 'A') this.cursorA = t; else this.cursorB = t;
+          this._render();
+        }
+        // Hover style
+        if (!drag && !dragWhich) {
+          const rect = this.canvas.getBoundingClientRect();
+          const ox = e.clientX - rect.left;
+          this.canvas.style.cursor = _near(ox) ? "col-resize" : "grab";
+        }
       });
+
+      document.addEventListener("mouseup", e => {
+        if (drag) {
+          drag = false;
+          // Treat as a click (barely moved) → place cursor A or B
+          if (Math.abs(e.clientX - startClientX) < DRAG_THRESH) {
+            const t = this._snapToClk(Math.max(0, (startOffsetX + this.offX) / this.scale));
+            if (startShift) this.cursorB = t; else this.cursorA = t;
+          }
+          this._render();
+          this.canvas.style.cursor = "grab";
+        }
+        if (dragWhich) { dragWhich = null; this.canvas.style.cursor = "grab"; }
+      });
+
       this.canvas.addEventListener("wheel",e=>{
         e.preventDefault();
         const f=e.deltaY<0?1.25:1/1.25;
@@ -1056,12 +1197,19 @@
           return;
         }
         if (statusEl) statusEl.textContent = "";
+        const prevSticky = wv ? wv.stickyClk : false;
         try {
           wv = new WaveformViewer(
             document.getElementById("wave-names"),
             document.getElementById("wave-canvas-wrap"),
             data
           );
+          // Restore sticky state from previous viewer (survives per-test reloads).
+          if (prevSticky) {
+            wv.stickyClk = true;
+            const sb = document.getElementById("wave-sticky-btn");
+            if (sb) { sb.style.background="var(--accent)"; sb.style.color="#fff"; sb.textContent="\uD83D\uDCCC CLK snap: ON"; }
+          }
         } catch(err) {
           if (statusEl) { statusEl.textContent = "Render error: "+err.message; statusEl.style.color="#f85149"; }
           console.error("WaveformViewer error:", err);
